@@ -1,0 +1,9 @@
+// Add business models after the workspace and session schema is agreed.
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

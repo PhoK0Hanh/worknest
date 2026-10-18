@@ -1,0 +1,7 @@
+# Never commit credentials or generated output.
+node_modules/
+dist/
+.env*
+!.env.example
+src/generated/
+*.log

@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+/* System fonts keep builds independent of external font downloads. */
+body {
+  margin: 0;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: Arial, Helvetica, sans-serif;
+}
