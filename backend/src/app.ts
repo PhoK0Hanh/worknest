@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { config } from "./config.js";
+import { requireFirebaseAuth } from "./middleware/require-firebase-auth.js";
 
 export const app = express();
 app.disable("x-powered-by");
@@ -14,6 +15,11 @@ app.use(cookieParser());
 // Liveness only: successful responses do not imply a working Neon connection.
 app.get("/api/health", (_request, response) => {
   response.set("Cache-Control", "no-store").json({ service: "worknest-api", status: "ok" });
+});
+
+// Firebase identity only: this does not grant access to Neon users or workspaces.
+app.get("/api/auth/identity", requireFirebaseAuth, (_request, response) => {
+  response.json({ firebase: response.locals.firebaseIdentity });
 });
 
 app.use((_request, response) => {

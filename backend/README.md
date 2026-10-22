@@ -33,14 +33,18 @@ npm run db:validate
 - `src/config.ts`: đọc và kiểm tra cấu hình.
 - `src/app.ts`: middleware, REST API, 404 và xử lý lỗi.
 - `src/server.ts`: HTTP server, Socket.IO và shutdown.
-- `prisma/schema.prisma`: cấu hình PostgreSQL, chưa có business model.
+- `prisma/schema.prisma`: 6 model nghiệp vụ; xem `prisma/README.md` để tạo bảng bằng migration.
 - `prisma.config.ts`: cấu hình Prisma CLI.
 
 ## Neon và auth
 
 Thay DATABASE_URL trong .env bằng URL Neon thật khi triển khai database.
-Chưa có model, migration, Prisma Client hoặc truy vấn database.
-Auth sẽ dùng Argon2id, session database và cookie HttpOnly; hiện chưa triển khai.
+Đã áp dụng migration khởi tạo lên Neon phát triển ngày 23/10/2026; chưa triển khai truy vấn nghiệp vụ.
+<!-- Auth decision: Firebase replaces the original custom password/session proposal. -->
+Auth sẽ dùng Firebase Authentication; frontend gửi Firebase ID token bằng Authorization: Bearer.
+Backend xác minh bằng Firebase Admin SDK và liên kết User trong Neon qua firebaseUid duy nhất.
+Neon lưu hồ sơ và quyền workspace, không lưu mật khẩu. Firebase SDK chưa cài; auth chưa triển khai.
+Argon2 dùng hash mật khẩu tham gia workspace, không dùng cho mật khẩu tài khoản Firebase.
 Không commit .env hoặc cung cấp database URL cho frontend.
 Chỉ chạy migrate dev trên database phát triển; migrate deploy dành cho migration đã review.
 
@@ -49,9 +53,9 @@ Chỉ chạy migrate dev trên database phát triển; migrate deploy dành cho 
 Axios frontend đã trỏ tới http://localhost:4000/api với withCredentials.
 CORS backend chỉ cho phép origin được cấu hình và hỗ trợ cookie.
 Socket.IO hiện chỉ phát server:ready sau khi kết nối. Chưa có room workspace hoặc sự kiện task.
-Khi thêm auth, API và socket đều phải kiểm tra session và quyền workspace.
+Khi thêm auth, API và socket đều phải xác minh Firebase ID token và kiểm tra quyền workspace.
 
 ## Deploy
 
-Hiện dùng HTTP server Node.js cho local. Cấu hình entrypoint hosting, session cookie production,
+Hiện dùng HTTP server Node.js cho local. Cấu hình entrypoint hosting, Firebase production,
 proxy, reconnect và chia sẻ sự kiện giữa instance sẽ làm ở giai đoạn deploy.
