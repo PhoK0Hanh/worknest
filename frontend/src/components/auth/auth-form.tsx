@@ -8,6 +8,7 @@ import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut,
   updateProfile,
   type User,
@@ -49,6 +50,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
   const [signingOut, setSigningOut] = useState(false);
   const queryClient = useQueryClient();
   const {
+    getValues,
     register,
     handleSubmit,
     setError,
@@ -407,6 +409,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           {!isSubmitting && <ArrowRight className="ml-1 size-4" />}
         </Button>
       </form>
+      {!signup && <div className="mt-4 space-y-2"><Button variant="ghost" className="w-full" disabled={isSubmitting} onClick={async () => { try { const email=getValues("email").trim(); if(!email){setNotice("Nhập email của bạn ở trên trước.");return;} await sendPasswordResetEmail(getFirebaseAuth(),email);setNotice("Nếu email hợp lệ, hướng dẫn đặt lại mật khẩu sẽ được gửi đến hộp thư."); } catch { setNotice("Chưa thể gửi email. Kiểm tra địa chỉ và thử lại."); } }}>Quên mật khẩu?</Button>{notice && <p role="status" className="text-sm text-muted-foreground">{notice}</p>}</div>}
       <p className="mt-7 text-center text-sm text-muted-foreground">
         {signup ? "Đã có tài khoản?" : "Chưa có tài khoản?"}{" "}
         <Link

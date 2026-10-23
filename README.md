@@ -1,78 +1,73 @@
 # WorkNest
 
-<!-- Status reflects implemented features; planned modules are listed separately. -->
+<!-- Document implemented behavior; production and manual checks remain explicit. -->
 
 Ứng dụng quản lý công việc nhóm với workspace, Kanban và cộng tác realtime.
-Hiện đã hoàn thành đăng ký/đăng nhập Firebase và đồng bộ hồ sơ người dùng vào Neon.
+Dự án cá nhân phục vụ học tập và portfolio thực tập.
 
-## Hiện trạng
+## Tính năng
 
-- Trang `/login`, `/signup`, đăng xuất và khôi phục trạng thái đăng nhập.
-- Giao diện emerald, shadcn/ui, React Hook Form và Zod.
-- Backend xác minh Firebase ID token, kiểm tra thu hồi và tài khoản Firebase bị vô hiệu hóa.
-- Đồng bộ hồ sơ theo `firebase_uid`: không tạo trùng, không tự ghép theo email,
-  không kích hoạt lại hồ sơ có `is_active = false`.
-- Migration PostgreSQL cho 6 bảng đã có: users, workspaces, memberships,
-  invitations, tasks và activity_logs.
+- Firebase Email/Password: đăng ký, đăng nhập, khôi phục phiên, đăng xuất và email đặt lại mật khẩu.
+- Hồ sơ Neon: đồng bộ theo Firebase UID, sửa tên, xóa mềm tài khoản; dọn danh tính Firebase có cơ chế thử lại.
+- Workspace: tạo nhóm, tham gia bằng mã và mật khẩu đã hash, đổi tên/mật khẩu, xóa có xác nhận.
+- Phân quyền Owner/Admin/Member, chuyển Owner, loại thành viên và chặn tham gia lại bằng mã khi bị banned.
+- Lời mời dành cho tài khoản có sẵn, hạn 3 ngày, chấp nhận/từ chối và ngăn lời mời còn hiệu lực trùng nhau.
+- Kanban ReUI: tạo/sửa task, người phụ trách, ưu tiên, deadline, kéo thả trạng thái và thứ tự với dynamic overlay.
+- Sheet chi tiết task; phát hiện chỉnh sửa từ dữ liệu cũ và xung đột thứ tự bảng.
+- Realtime Socket.IO xác thực Firebase và kiểm tra quyền người nhận; reconnect tải lại dữ liệu.
+- Dashboard: số task, tiến độ, task quá hạn. Activity Logs hiển thị 100 hoạt động mới nhất.
+- Khung ứng dụng toàn màn hình, sidebar, sticky header, skeleton và giao diện responsive.
 
-Workspace, phân quyền nhóm, lời mời, Kanban và dashboard mới có thiết kế database,
-chưa có API/giao diện nghiệp vụ. Socket.IO hiện chỉ có handshake `server:ready`,
-chưa có xác thực socket hoặc đồng bộ task. Bình luận được hoãn sang giai đoạn sau.
+Bình luận, sprint, task con, tệp đính kèm và cột tùy chỉnh chưa nằm trong bản đầu.
 
 ## Stack và kiến trúc
 
 | Phần | Công nghệ |
 |---|---|
-| Frontend | Next.js, React, TypeScript, Tailwind CSS, shadcn/ui, Lucide React |
+| Frontend | Next.js App Router, React, TypeScript, Tailwind CSS |
+| UI | shadcn/ui, ReUI, Lucide, dnd-kit |
 | Form và dữ liệu | React Hook Form, Zod, TanStack Query, Axios |
-| Backend | Node.js, Express, TypeScript, Firebase Admin SDK |
-| Database | PostgreSQL trên Neon, Prisma, adapter-pg |
-| Auth | Firebase Authentication Email/Password |
-| Realtime dự kiến | Socket.IO |
+| Backend | Node.js, Express, TypeScript, Firebase Admin, Argon2, express-rate-limit |
+| Database | PostgreSQL trên Neon, Prisma và adapter-pg |
+| Auth / realtime | Firebase Authentication / Socket.IO |
 
 ```text
-Frontend ── email/password ──→ Firebase Auth
-         ←──── ID token ─────
-Frontend ── Bearer ID token ─→ Express ── Prisma ─→ Neon
+Frontend → Firebase Auth → ID token
+Frontend → Express REST API (Bearer token) → Prisma → Neon
+Frontend ↔ Socket.IO (token + quyền workspace)
+DB commit → sự kiện thay đổi → TanStack Query tải lại dữ liệu
 ```
 
-Firebase không tự gửi user vào Neon. Frontend gọi backend sau khi đăng nhập;
-backend chỉ dùng danh tính đã xác minh để tạo hoặc tìm hồ sơ. Mật khẩu tài khoản
-không gửi tới Express và không lưu trong Neon.
+Firebase không tự gửi hồ sơ vào Neon. Backend xác minh token trước khi xử lý
+nghiệp vụ; mật khẩu tài khoản chỉ gửi Firebase. Mật khẩu tham gia nhóm được hash
+bằng Argon2. Quyền được kiểm tra ở backend, không chỉ dựa vào giao diện.
 
-## Cấu trúc
+## Cài đặt local
 
-- [Frontend](frontend/README.md): trang, component và Firebase Web SDK.
-- [Backend](backend/README.md): REST API, Firebase Admin và đồng bộ user.
-- [Database](backend/prisma/README.md): schema, migration và ràng buộc dữ liệu.
-- Mỗi ứng dụng có package.json và lockfile riêng, cùng một Git repository.
-
-## Cài đặt và chạy local
-
-Yêu cầu Node.js 24 LTS, npm, Firebase project bật Email/Password và database Neon.
-Từ thư mục gốc repository:
+Yêu cầu Node.js theo `backend/package.json` (>=24), npm, Firebase bật Email/Password
+và PostgreSQL/Neon. Mỗi ứng dụng có package và lockfile riêng.
 
 ```powershell
 npm --prefix frontend ci
 npm --prefix backend ci
-```
-
-Lần đầu, sao chép frontend/.env.example thành frontend/.env.local và
-backend/.env.example thành backend/.env, rồi điền cấu hình theo README từng phần.
-Không ghi đè các file môi trường đã cấu hình.
-
-```powershell
 npm --prefix backend run db:generate
-npm --prefix backend run db:validate
 ```
 
-Sau khi kiểm tra đúng database đích, áp dụng migration đã review:
+Sao chép `frontend/.env.example` thành `frontend/.env.local` và `backend/.env.example`
+thành `backend/.env`, điền cấu hình thật; không ghi đè file đã cấu hình.
+
+- FE: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SOCKET_URL` và Firebase Web config.
+- BE: `PORT`, `FRONTEND_URL`, `DATABASE_URL` và Firebase Admin credentials.
+- `FRONTEND_URL` phải khớp origin FE. Firebase Admin và URL database chỉ ở backend.
+
+Sau khi kiểm tra đúng database đích:
 
 ```powershell
+npm --prefix backend run db:validate
 npm --prefix backend run db:deploy
 ```
 
-Chạy trong hai terminal:
+Chạy hai terminal:
 
 ```powershell
 npm --prefix backend run dev
@@ -82,17 +77,12 @@ npm --prefix backend run dev
 npm --prefix frontend run dev
 ```
 
-Frontend mặc định: http://localhost:3000. Backend: http://localhost:4000.
-Nếu frontend đổi cổng, cập nhật FRONTEND_URL ở backend và khởi động lại.
-
-## Thử luồng đăng nhập
-
-1. Mở `/signup`, tạo tài khoản; tài khoản xuất hiện trong Firebase Authentication.
-2. Frontend gửi token tới `/api/auth/sync`; hồ sơ xuất hiện trong bảng users trên Neon.
-3. Đăng xuất/đăng nhập lại; cùng UID dùng lại hồ sơ đã có.
-4. Khi backend không sẵn sàng, giao diện báo chưa hoàn tất đăng nhập và có nút thử lại.
+FE mặc định `http://localhost:3000`, BE `http://localhost:4000`.
+Đăng nhập thành công vào `/workspaces`; mở nhóm để xem tab công việc/thành viên/tổng quan/hoạt động.
 
 ## Kiểm tra
+
+Cài dependencies của cả FE và BE trước; test realtime sử dụng Socket.IO client của FE.
 
 ```powershell
 npm --prefix frontend run lint
@@ -100,16 +90,35 @@ npm --prefix frontend run build
 npm --prefix backend test
 ```
 
-Backend test mặc định không cần kết nối Neon; bài tích hợp database được bật riêng
-theo hướng dẫn trong backend/README.md. Luồng đăng ký và đồng bộ user thật đã được thử thủ công.
+Bật kiểm thử Neon từ thư mục `backend`:
 
-## Cấu hình và triển khai
+```powershell
+$env:RUN_DB_TESTS='1'
+node --env-file=.env --test tests/*.test.mjs
+```
 
-File môi trường thật, dependency, output build, cache và INFO.md được Git bỏ qua.
-Cache npm được cấu hình nằm trong `.npm-cache` ở gốc WorkNest.
-Không đưa DATABASE_URL hoặc Firebase Admin private key vào frontend/Git.
+Test database dùng bảng tạm trong transaction. Test thường bỏ qua các bài cần Neon.
+Có kiểm thử auth, phân quyền quản lý, task, rollback, xung đột và nhiều kết nối socket.
+Email reset, xóa tài khoản Firebase thật và toàn bộ thao tác UI vẫn cần smoke test
+với tài khoản thử; kết quả build/test không thay thế kiểm thử trình duyệt.
 
-Phương án triển khai dự kiến: frontend Vercel, backend Render, database Neon.
-Chưa deploy hoặc cấu hình vận hành production. ReUI miễn phí có thể bổ sung sau;
-hiện chưa tích hợp. Bước phát triển tiếp theo là tạo workspace cùng membership Owner
-và activity log trong một transaction.
+## Cấu trúc và triển khai
+
+- `frontend/src/app`: routes Next.js.
+- `frontend/src/components`: component shadcn/ReUI và giao diện nghiệp vụ.
+- `backend/src/routes`, `services`, `lib`: API, transaction và tích hợp dịch vụ.
+- `backend/prisma`: schema và migration cho 6 bảng.
+- `backend/tests`: kiểm thử Node.js và tích hợp.
+
+Frontend có thể deploy riêng; backend cần tiến trình Node chạy lâu dài, hỗ trợ
+Socket.IO. Đặt biến môi trường production trước khi build FE, cấu hình CORS và
+Firebase authorized domains, rồi chạy migration bằng `db:deploy`.
+Hiện chưa deploy. Người sở hữu dự án tự thực hiện deploy.
+
+Bản hiện tại dùng một backend instance; nhiều instance cần shared Socket.IO adapter.
+Xóa tài khoản giữ hồ sơ lịch sử ở Neon; dọn danh tính Firebase chạy sau commit và
+thử lại mỗi phút khi backend hoạt động. Email có thể cần chờ bước dọn này trước khi đăng ký lại.
+
+Không commit `.env` thật, Firebase Admin key, node_modules, output build, cache hoặc
+`INFO.md`. Cache npm nằm trong `.npm-cache` của dự án. Một số README trong thư mục
+con có thể mô tả mốc khởi tạo; README gốc này phản ánh phạm vi tính năng hiện tại.

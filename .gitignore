@@ -13,3 +13,4 @@ coverage/
 /INFO.md
 # npm download cache stays local to this project.
 /.npm-cache/
+DEPLOYMENT.md

@@ -1,3 +1,5 @@
+import { management } from "./routes/management.js";
+import { createTaskHandlers } from "./routes/tasks.js";
 import express, { type ErrorRequestHandler } from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -53,6 +55,14 @@ const joinWorkspaceLimit = rateLimit({
 app.post("/api/workspaces/join", requireFirebaseAuth, joinWorkspaceLimit, workspaces.join);
 app.get("/api/workspaces/:id", requireFirebaseAuth, workspaces.detail);
 app.post("/api/workspaces/:id/leave", requireFirebaseAuth, workspaces.leave);
+
+const tasks = createTaskHandlers();
+app.patch("/api/workspaces/:id/tasks/order", requireFirebaseAuth, tasks.reorder);
+app.patch("/api/workspaces/:id/tasks/:taskId", requireFirebaseAuth, tasks.update);
+app.get("/api/workspaces/:id/tasks", requireFirebaseAuth, tasks.list);
+app.post("/api/workspaces/:id/tasks", requireFirebaseAuth, tasks.create);
+
+app.use("/api", management);
 
 app.use((_request, response) => {
   response.status(404).json({ error: "Không tìm thấy API." });

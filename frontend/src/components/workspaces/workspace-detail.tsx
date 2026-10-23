@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkspaceManagement } from "@/components/workspaces/management";
 import { WorkspaceDetailSkeleton } from "@/components/workspaces/workspace-skeleton";
 
 import { useEffect, useState } from "react";
@@ -136,6 +137,7 @@ function WorkspaceDetailContent({
         workspace={workspace}
         profileName={profile.data?.name ?? session.user?.displayName ?? "Bạn"}
       >
+        <WorkspaceManagement workspace={workspace} />
         <div className="mb-6">
           <h2 className="text-xl font-semibold">Thành viên</h2>
           <p className="mt-2 text-sm text-muted-foreground">

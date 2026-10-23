@@ -28,6 +28,7 @@ import {
   WorkspaceMenuButton,
 } from "@/components/workspaces/worknest-shell";
 import { WorkspaceListSkeleton } from "@/components/workspaces/workspace-skeleton";
+import { Invitations } from "@/components/workspaces/management";
 import { JoinWorkspaceForm } from "@/components/workspaces/join-workspace-form";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
 import { profileErrorMessage, useWorkNestProfile } from "@/lib/auth/profile";
@@ -222,6 +223,7 @@ export function WorkspaceList() {
           </div>
         </div>
 
+        {ready && <Invitations />}
         {notice && (
           <p
             role="status"

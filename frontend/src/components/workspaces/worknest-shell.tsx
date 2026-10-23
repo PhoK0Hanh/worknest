@@ -6,6 +6,7 @@ import { LayoutGrid, Leaf, Menu, Settings, LogOut, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { AccountSettings } from "@/components/workspaces/account-settings";
 import { AccountAvatar } from "@/components/examples/c-avatar-14";
 import { cn } from "@/lib/utils";
 
@@ -49,9 +50,9 @@ export function WorkNestShell({ profileName, accountActions, children }: {
   return (
     <div className="h-dvh overflow-hidden bg-white">
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
           <DialogHeader><DialogTitle>Cài đặt tài khoản</DialogTitle><DialogDescription>Chức năng chỉnh sửa tài khoản sẽ được bổ sung sau.</DialogDescription></DialogHeader>
-          <p className="break-words text-sm">{profileName}</p><p className="break-all text-sm text-muted-foreground">{email}</p>
+          <AccountSettings name={profileName} email={email} />
           <DialogFooter><DialogClose asChild><Button variant="outline">Đóng</Button></DialogClose></DialogFooter>
         </DialogContent>
       </Dialog>
