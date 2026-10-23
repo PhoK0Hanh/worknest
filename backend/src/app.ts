@@ -5,6 +5,8 @@ import cookieParser from "cookie-parser";
 import { config } from "./config.js";
 import { requireFirebaseAuth } from "./middleware/require-firebase-auth.js";
 import { createSyncUserHandler } from "./routes/auth.js";
+import { createWorkspaceHandlers } from "./routes/workspaces.js";
+import { rateLimit } from "express-rate-limit";
 
 export const app = express();
 app.disable("x-powered-by");
@@ -25,6 +27,32 @@ app.get("/api/auth/identity", requireFirebaseAuth, (_request, response) => {
 
 // Idempotent profile synchronization after login; no password is sent to Express.
 app.post("/api/auth/sync", requireFirebaseAuth, createSyncUserHandler());
+
+const workspaces = createWorkspaceHandlers();
+// Bound hashing/creation work per verified user, not an ID supplied in the request body.
+const createWorkspaceLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  keyGenerator: (_request, response) => response.locals.firebaseIdentity.uid,
+  message: { error: "Bạn đã tạo quá nhiều nhóm. Vui lòng thử lại sau.", code: "WORKSPACE_RATE_LIMIT" },
+});
+app.get("/api/workspaces", requireFirebaseAuth, workspaces.list);
+app.post("/api/workspaces", requireFirebaseAuth, createWorkspaceLimit, workspaces.create);
+// Bound password guessing and verification work; successful joins do not consume attempts.
+const joinWorkspaceLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  skipSuccessfulRequests: true,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  keyGenerator: (_request, response) => response.locals.firebaseIdentity.uid,
+  message: { error: "Bạn đã thử tham gia quá nhiều lần. Vui lòng thử lại sau.", code: "JOIN_RATE_LIMIT" },
+});
+app.post("/api/workspaces/join", requireFirebaseAuth, joinWorkspaceLimit, workspaces.join);
+app.get("/api/workspaces/:id", requireFirebaseAuth, workspaces.detail);
+app.post("/api/workspaces/:id/leave", requireFirebaseAuth, workspaces.leave);
 
 app.use((_request, response) => {
   response.status(404).json({ error: "Không tìm thấy API." });

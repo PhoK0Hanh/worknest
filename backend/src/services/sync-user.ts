@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { PrismaClient } from "../generated/prisma/client.js";
 import { getPrisma } from "../lib/prisma.js";
+import { isUniqueViolation } from "../lib/database-error.js";
 
 export class UserSyncError extends Error {
   constructor(public code: string, public status: number, message: string) { super(message); }
@@ -8,14 +9,6 @@ export class UserSyncError extends Error {
 
 export type SyncIdentity = { uid: string; email: string | null; name?: string };
 type Profile = { id: string; firebaseUid: string; name: string; email: string; createdAt: Date; updatedAt: Date };
-
-function isUniqueViolation(error: unknown, depth = 0): boolean {
-  if (!error || typeof error !== "object" || depth > 5) return false;
-  const details = error as Record<string, unknown>;
-  if (details.code === "P2002" || details.code === "23505" || details.originalCode === "23505" || details.kind === "UniqueConstraintViolation") return true;
-  // Prisma 7 driver adapters may wrap SQLSTATE in a nested driver error.
-  return [details.meta, details.driverAdapterError, details.cause].some(value => isUniqueViolation(value, depth + 1));
-}
 
 export async function syncUser(identity: SyncIdentity, database?: Pick<PrismaClient, "$queryRaw">) {
   const parsed = z.object({
