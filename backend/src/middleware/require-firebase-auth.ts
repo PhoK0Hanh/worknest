@@ -2,7 +2,7 @@ import type { RequestHandler } from "express";
 import type { DecodedIdToken } from "firebase-admin/auth";
 import { FirebaseAdminConfigError, verifyFirebaseIdToken } from "../lib/firebase-admin.js";
 
-type Identity = Pick<DecodedIdToken, "uid" | "email" | "email_verified">;
+type Identity = Pick<DecodedIdToken, "uid" | "email" | "email_verified"> & { name?: unknown };
 type VerifyToken = (token: string) => Promise<Identity>;
 
 const invalidTokenCodes = new Set([
@@ -33,6 +33,7 @@ export function createRequireFirebaseAuth(verify: VerifyToken = verifyFirebaseId
         uid: identity.uid,
         email: identity.email ?? null,
         emailVerified: identity.email_verified === true,
+        ...(typeof identity.name === "string" ? { name: identity.name.trim().slice(0, 100) } : {}),
       };
       next();
     } catch (error) {

@@ -4,6 +4,7 @@ import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { config } from "./config.js";
 import { requireFirebaseAuth } from "./middleware/require-firebase-auth.js";
+import { createSyncUserHandler } from "./routes/auth.js";
 
 export const app = express();
 app.disable("x-powered-by");
@@ -21,6 +22,9 @@ app.get("/api/health", (_request, response) => {
 app.get("/api/auth/identity", requireFirebaseAuth, (_request, response) => {
   response.json({ firebase: response.locals.firebaseIdentity });
 });
+
+// Idempotent profile synchronization after login; no password is sent to Express.
+app.post("/api/auth/sync", requireFirebaseAuth, createSyncUserHandler());
 
 app.use((_request, response) => {
   response.status(404).json({ error: "Không tìm thấy API." });

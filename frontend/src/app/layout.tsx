@@ -8,5 +8,6 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="vi"><body><Providers>{children}</Providers></body></html>;
+  // System fonts avoid remote font downloads in local and production builds.
+  return <html lang="vi" className="font-sans"><body><Providers>{children}</Providers></body></html>;
 }

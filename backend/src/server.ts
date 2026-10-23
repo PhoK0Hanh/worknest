@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { Server } from "socket.io";
 import { app } from "./app.js";
 import { config } from "./config.js";
+import { disconnectDatabase } from "./lib/prisma.js";
 
 export const server = createServer(app);
 export const io = new Server(server, {
@@ -20,7 +21,7 @@ server.listen(config.PORT, () => {
 // Release sockets and the HTTP listener when the development process stops.
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {
-    io.close();
+    io.close(() => { void disconnectDatabase(); });
     server.close();
   });
 }

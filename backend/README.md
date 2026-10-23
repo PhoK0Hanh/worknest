@@ -1,61 +1,114 @@
 # WorkNest Backend
 
-<!-- Initial scaffold; auth, persistence and business APIs are not implemented. -->
+<!-- Firebase identity and Neon profile sync are implemented; workspace APIs are pending. -->
 
-Express + TypeScript, Socket.IO và cấu hình Prisma cho Neon PostgreSQL.
+Express + TypeScript, Firebase Admin SDK, Prisma + adapter-pg và Socket.IO.
 Yêu cầu Node.js 24 LTS và npm.
 
-## Chạy local
+## Cấu hình và chạy
 
-Từ thư mục `Web/worknest/backend`:
+Từ thư mục backend:
 
 ```powershell
 npm ci
-Copy-Item .env.example .env
-npm run dev
 ```
 
-API: http://localhost:4000/api/health. Trả JSON service/status.
-Health check không xác nhận kết nối database. Chưa cần Neon để chạy scaffold.
-Đổi FRONTEND_URL nếu frontend chạy ở cổng khác 3000.
+Lần đầu, sao chép `.env.example` thành `.env`, không ghi đè file đã cấu hình.
 
-## Kiểm tra và build
+| Biến | Ý nghĩa |
+|---|---|
+| PORT | Cổng HTTP, mặc định 4000 |
+| FRONTEND_URL | Origin frontend được phép CORS, mặc định http://localhost:3000 |
+| DATABASE_URL | Chuỗi kết nối database Neon |
+| FIREBASE_ADMIN_PROJECT_ID | project_id của Firebase service account |
+| FIREBASE_ADMIN_CLIENT_EMAIL | client_email |
+| FIREBASE_ADMIN_PRIVATE_KEY | private_key; đặt trong nháy kép, giữ các ký tự `\n` |
+
+Project ID phải khớp Firebase Web ở frontend. Không commit .env, private key hoặc
+service-account JSON. Backend không cần mật khẩu tài khoản người dùng.
 
 ```powershell
-npm run typecheck
-npm run build
-npm start
+npm run db:generate
 npm run db:validate
 ```
 
-## Cấu trúc
+Sau khi xác nhận database đích, áp dụng migration đã review:
 
-- `src/config.ts`: đọc và kiểm tra cấu hình.
-- `src/app.ts`: middleware, REST API, 404 và xử lý lỗi.
-- `src/server.ts`: HTTP server, Socket.IO và shutdown.
-- `prisma/schema.prisma`: 6 model nghiệp vụ; xem `prisma/README.md` để tạo bảng bằng migration.
-- `prisma.config.ts`: cấu hình Prisma CLI.
+```powershell
+npm run db:deploy
+npm run dev
+```
 
-## Neon và auth
+API local: http://localhost:4000. Health chỉ kiểm tra server, không kiểm tra Neon.
+Firebase Admin và Prisma được khởi tạo khi cần, không bắt buộc kết nối để trả health.
 
-Thay DATABASE_URL trong .env bằng URL Neon thật khi triển khai database.
-Đã áp dụng migration khởi tạo lên Neon phát triển ngày 23/10/2026; chưa triển khai truy vấn nghiệp vụ.
-<!-- Auth decision: Firebase replaces the original custom password/session proposal. -->
-Auth sẽ dùng Firebase Authentication; frontend gửi Firebase ID token bằng Authorization: Bearer.
-Backend xác minh bằng Firebase Admin SDK và liên kết User trong Neon qua firebaseUid duy nhất.
-Neon lưu hồ sơ và quyền workspace, không lưu mật khẩu. Firebase SDK chưa cài; auth chưa triển khai.
-Argon2 dùng hash mật khẩu tham gia workspace, không dùng cho mật khẩu tài khoản Firebase.
-Không commit .env hoặc cung cấp database URL cho frontend.
-Chỉ chạy migrate dev trên database phát triển; migrate deploy dành cho migration đã review.
+## REST API hiện có
 
-## Frontend và realtime
+| Method | Endpoint | Hành vi |
+|---|---|---|
+| GET | `/api/health` | Trạng thái server |
+| GET | `/api/auth/identity` | Xác minh ID token và trả danh tính Firebase; chưa kiểm tra hồ sơ Neon |
+| POST | `/api/auth/sync` | Tạo/tìm hồ sơ Neon theo danh tính Firebase đã xác minh |
 
-Axios frontend đã trỏ tới http://localhost:4000/api với withCredentials.
-CORS backend chỉ cho phép origin được cấu hình và hỗ trợ cookie.
-Socket.IO hiện chỉ phát server:ready sau khi kết nối. Chưa có room workspace hoặc sự kiện task.
-Khi thêm auth, API và socket đều phải xác minh Firebase ID token và kiểm tra quyền workspace.
+Hai endpoint auth yêu cầu `Authorization: Bearer <Firebase ID token>` và trả no-store.
+Không nhận UID/email/vai trò do request body khai báo làm nguồn danh tính.
 
-## Deploy
+## Quy tắc đồng bộ hồ sơ
 
-Hiện dùng HTTP server Node.js cho local. Cấu hình entrypoint hosting, Firebase production,
-proxy, reconnect và chia sẻ sự kiện giữa instance sẽ làm ở giai đoạn deploy.
+- Xác minh token bằng Firebase Admin, gồm kiểm tra thu hồi và tài khoản Firebase bị khóa/xóa.
+- UID và email hợp lệ là bắt buộc; email được trim và chuyển chữ thường.
+- Tạo hồ sơ với tên từ token; nếu thiếu thì dùng phần trước @ của email.
+- Cùng UID dùng lại hồ sơ, giữ tên trong Neon; chỉ cập nhật email khi cần.
+- Atomic upsert và unique constraint ngăn tạo trùng khi gọi đồng thời.
+- Hồ sơ is_active=false bị từ chối; không tự khôi phục hoặc ghép theo email.
+- UID khác nhưng email trùng trả 409; không tự kế thừa hồ sơ/quyền cũ.
+- API hiện chưa bắt buộc email_verified=true; chưa triển khai luồng xác minh email.
+
+| HTTP | Ý nghĩa |
+|---|---|
+| 400 | Hồ sơ Firebase thiếu UID/email hợp lệ |
+| 401 | Token thiếu, lỗi, hết hạn, bị thu hồi hoặc tài khoản Firebase bị vô hiệu hóa |
+| 403 | Hồ sơ WorkNest đã ngừng hoạt động |
+| 409 | Email xung đột với hồ sơ khác |
+| 503 | Chưa xác minh được token hoặc chưa truy cập được hồ sơ/database |
+
+## Kiểm tra
+
+```powershell
+npm test
+npm run typecheck
+npm run build
+```
+
+`npm test` build rồi chạy test Node.js. Test auth dùng verifier giả lập;
+test tích hợp Neon mặc định bị bỏ qua.
+Để chạy bài tích hợp, dùng database phát triển đã cấu hình:
+
+```powershell
+$env:RUN_DB_TESTS='1'
+node --env-file=.env --test tests/user-sync.test.mjs
+Remove-Item Env:RUN_DB_TESTS
+```
+
+Bài tích hợp sử dụng transaction và bảng TEMP, không thay đổi public.users thật.
+Kiểm tra idempotency, giữ tên, lỗi trùng email, không khôi phục hồ sơ đã xóa và
+tạo hồ sơ mới bằng UID mới sau khi email cũ được giải phóng.
+
+Production local: chạy `npm start` sau khi build.
+
+## Cấu trúc và phần chưa triển khai
+
+- `src/app.ts`: middleware và các REST route.
+- `src/middleware/require-firebase-auth.ts`: xác minh Bearer token.
+- `src/lib/firebase-admin.ts`: Firebase Admin credentials và verifier.
+- `src/lib/prisma.ts`: Prisma client/pool dùng chung, khởi tạo khi cần.
+- `src/services/sync-user.ts`: đồng bộ hồ sơ bằng truy vấn tham số hóa.
+- `src/routes/auth.ts`: phản hồi sync và mã lỗi an toàn.
+- `src/server.ts`: HTTP, Socket.IO và dọn kết nối khi shutdown.
+- `prisma/`: 6 model, migration và hướng dẫn database.
+
+Workspace, quyền Owner/Admin/Member, lời mời, task và activity logs chưa có API.
+Socket.IO chỉ phát server:ready, chưa có kiểm tra token/room workspace/realtime nghiệp vụ.
+Argon2 đã cài để dùng cho mật khẩu tham gia workspace sau này; rate limit chưa cấu hình.
+Chưa deploy production; cần kiểm tra CORS, domain, proxy, reconnect và cấu hình hosting
+trước khi triển khai backend dự kiến lên Render.
