@@ -58,6 +58,7 @@ app.post("/api/workspaces/:id/leave", requireFirebaseAuth, workspaces.leave);
 
 const tasks = createTaskHandlers();
 app.patch("/api/workspaces/:id/tasks/order", requireFirebaseAuth, tasks.reorder);
+app.delete("/api/workspaces/:id/tasks/:taskId", requireFirebaseAuth, tasks.remove);
 app.patch("/api/workspaces/:id/tasks/:taskId", requireFirebaseAuth, tasks.update);
 app.get("/api/workspaces/:id/tasks", requireFirebaseAuth, tasks.list);
 app.post("/api/workspaces/:id/tasks", requireFirebaseAuth, tasks.create);

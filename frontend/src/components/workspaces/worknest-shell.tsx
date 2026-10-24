@@ -51,7 +51,7 @@ export function WorkNestShell({ profileName, accountActions, children }: {
     <div className="h-dvh overflow-hidden bg-white">
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
-          <DialogHeader><DialogTitle>Cài đặt tài khoản</DialogTitle><DialogDescription>Chức năng chỉnh sửa tài khoản sẽ được bổ sung sau.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>Cài đặt tài khoản</DialogTitle><DialogDescription>Quản lý tên hiển thị, mật khẩu và tài khoản của bạn.</DialogDescription></DialogHeader>
           <AccountSettings name={profileName} email={email} />
           <DialogFooter><DialogClose asChild><Button variant="outline">Đóng</Button></DialogClose></DialogFooter>
         </DialogContent>

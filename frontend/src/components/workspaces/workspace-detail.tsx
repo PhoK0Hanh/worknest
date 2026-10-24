@@ -1,7 +1,8 @@
 "use client";
 
-import { WorkspaceManagement } from "@/components/workspaces/management";
-import { WorkspaceDetailSkeleton } from "@/components/workspaces/workspace-skeleton";
+import { WorkspaceManagement, WorkspaceInviteButton, MemberActions } from "@/components/workspaces/management";
+import { CopyWorkspaceCode } from "@/components/workspaces/copy-workspace-code";
+import { WorkspaceDetailSkeleton, WorkspaceTabsSkeleton } from "@/components/workspaces/workspace-skeleton";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -10,10 +11,8 @@ import type { User } from "firebase/auth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
-  Copy,
   DoorOpen,
   LoaderCircle,
-  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -70,7 +69,6 @@ function WorkspaceDetailContent({
   const client = useQueryClient();
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [left, setLeft] = useState(false);
-  const [notice, setNotice] = useState("");
   const ready = !!session.user && profile.isSuccess && !profile.isFetching;
   const detail = useQuery({
     queryKey: ["workspace", session.user?.uid ?? null, id],
@@ -106,17 +104,6 @@ function WorkspaceDetailContent({
       router.replace("/login");
   }, [session.ready, session.user, session.failed, router]);
 
-  async function copyCode(code: string) {
-    try {
-      await navigator.clipboard.writeText(code);
-      setNotice("Đã sao chép mã nhóm.");
-    } catch {
-      setNotice(
-        "Không thể sao chép tự động. Hãy chọn mã nhóm và sao chép thủ công.",
-      );
-    }
-  }
-
   const loading =
     !session.ready ||
     (!session.user && !session.failed) ||
@@ -136,89 +123,19 @@ function WorkspaceDetailContent({
       <WorkspaceShell
         workspace={workspace}
         profileName={profile.data?.name ?? session.user?.displayName ?? "Bạn"}
-      >
-        <WorkspaceManagement workspace={workspace} />
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold">Thành viên</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Những người đang cùng làm việc trong workspace.
-          </p>
-        </div>
-        {notice && (
-          <p
-            role="status"
-            className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"
-          >
-            {notice}
-          </p>
-        )}
-        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
-          <Card className="gap-0 shadow-none">
-            <CardContent className="pt-6">
-              <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Thành viên</h2>
-                <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Users className="size-4" />
-                  {workspace.memberCount}
-                </span>
-              </div>
-              <ul className="divide-y">
-                {workspace.members.map((member) => (
-                  <li
-                    key={member.id}
-                    className="flex flex-wrap items-center gap-3 py-4"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-semibold text-primary"
-                    >
-                      {member.name.trim().slice(0, 1).toUpperCase()}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="wrap-break-word text-sm font-medium">
-                        {member.name}
-                        {member.id === profile.data?.id && (
-                          <span className="ml-2 font-normal text-muted-foreground">
-                            (Bạn)
-                          </span>
-                        )}
-                      </p>
-                      <p className="mt-1 break-all text-xs text-muted-foreground">
-                        {member.email}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Tham gia {displayDate(member.joinedAt)}
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium">
-                      {roleLabels[member.role] || member.role}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-          <div className="space-y-6">
-            <Card className="shadow-none">
-              <CardContent className="space-y-5 pt-6">
+        settingsContent={<>
+          {/* Group settings are separate from member management; permissions stay enforced by each action. */}
+          <div className="mb-6"><h2 className="text-xl font-semibold">Cài đặt workspace</h2><p className="mt-2 text-sm text-muted-foreground">Thông tin nhóm và các thiết lập theo vai trò của bạn.</p></div>
+          <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <WorkspaceManagement workspace={workspace} />
+            <Card className="gap-0 py-5 [--card-spacing:--spacing(5)]">
+              <CardContent className="space-y-5">
                 <h2 className="font-semibold">Thông tin workspace</h2>
                 <div>
                   <p className="mb-2 text-xs text-muted-foreground">
                     Mã tham gia nhóm
                   </p>
-                  <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2">
-                    <code className="text-sm tracking-wider">
-                      {workspace.joinCode}
-                    </code>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      aria-label="Sao chép mã nhóm"
-                      onClick={() => void copyCode(workspace.joinCode)}
-                    >
-                      <Copy />
-                    </Button>
-                  </div>
+                  <CopyWorkspaceCode key={workspace.joinCode} code={workspace.joinCode} />
                 </div>
                 <p className="flex items-center gap-2 text-xs text-muted-foreground">
                   <CalendarDays className="size-4" />
@@ -226,8 +143,8 @@ function WorkspaceDetailContent({
                 </p>
               </CardContent>
             </Card>
-            <Card className="shadow-none">
-              <CardContent className="space-y-4 pt-6">
+            <Card className="gap-0 py-5 [--card-spacing:--spacing(5)]">
+              <CardContent className="space-y-4">
                 <h2 className="font-semibold">Rời workspace</h2>
                 {workspace.role === "OWNER" ? (
                   <>
@@ -311,6 +228,50 @@ function WorkspaceDetailContent({
               </CardContent>
             </Card>
           </div>
+        </>}
+      >
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+          <div><h2 className="text-xl font-semibold">Thành viên <span className="ml-2 text-sm font-normal text-muted-foreground">({workspace.memberCount})</span></h2><p className="mt-2 text-sm text-muted-foreground">Những người đang cùng làm việc trong workspace.</p></div>
+          <WorkspaceInviteButton workspace={workspace} />
+        </div>
+        <div className="min-w-0">
+          <Card className="min-w-0 gap-0 py-1 [--card-spacing:--spacing(5)]">
+            <CardContent>
+              <ul className="divide-y">
+                {workspace.members.map((member) => (
+                  <li
+                    key={member.id}
+                    className="grid grid-cols-[2.5rem_minmax(0,1fr)] sm:grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 py-4"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-semibold text-primary"
+                    >
+                      {member.name.trim().slice(0, 1).toUpperCase()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="wrap-break-word text-sm font-medium">
+                        {member.name}
+                        {member.id === profile.data?.id && (
+                          <span className="ml-2 font-normal text-muted-foreground">
+                            (Bạn)
+                          </span>
+                        )}
+                      </p>
+                      <p className="mt-1 break-all text-xs text-muted-foreground">
+                        {member.email}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Tham gia {displayDate(member.joinedAt)}
+                      </p>
+                    </div>
+                    <div className="col-start-2 row-start-2 flex items-center gap-1.5 sm:col-start-3 sm:row-start-1"><span className="rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium">{roleLabels[member.role] || member.role}</span><MemberActions workspace={workspace} member={member} currentUserId={profile.data!.id} /></div>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+
         </div>
       </WorkspaceShell>
     );
@@ -327,6 +288,7 @@ function WorkspaceDetailContent({
         <WorkspaceMenuButton />
         <span className="text-xl font-semibold">Workspace</span>
       </header>
+      {loading && <WorkspaceTabsSkeleton />}
       <div className="p-5 lg:p-8">
         {left ? (
           <p role="status">Đã rời nhóm. Đang trở về danh sách workspace...</p>

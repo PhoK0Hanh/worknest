@@ -70,9 +70,27 @@ async function authorize(tx: Prisma.TransactionClient, uid: string, id: string) 
   if (!users[0]) throw new WorkspaceError("ACCOUNT_UNAVAILABLE", 403, "Tài khoản không hoạt động.");
   // Serialize task creation with joins/leaves to keep assignment and position consistent.
   const groups = await tx.$queryRaw`SELECT id FROM public.workspaces WHERE id=${id}::uuid FOR UPDATE`;
-  const memberships = await tx.$queryRaw<Array<{ user_id: string }>>`SELECT user_id FROM public.memberships WHERE workspace_id=${id}::uuid AND user_id=${users[0].id}::uuid AND left_at IS NULL AND is_banned=false FOR SHARE`;
+  const memberships = await tx.$queryRaw<Array<{ user_id: string; role: string }>>`SELECT user_id, role FROM public.memberships WHERE workspace_id=${id}::uuid AND user_id=${users[0].id}::uuid AND left_at IS NULL AND is_banned=false FOR SHARE`;
   if (!(groups as unknown[]).length || !memberships.length) throw new WorkspaceError("WORKSPACE_NOT_FOUND", 404, "Không có quyền truy cập workspace.");
-  return users[0];
+  return { ...users[0], role: memberships[0]!.role };
+}
+
+export async function deleteTask(uid: string, workspaceId: unknown, taskId: unknown, body: unknown, database?: Database) {
+  const id = z.uuid().parse(workspaceId);
+  const target = z.uuid().parse(taskId);
+  const input = z.object({ expectedUpdatedAt: z.iso.datetime({ offset: true }) }).strict().parse(body);
+  return (database ?? getPrisma()).$transaction(async tx => {
+    const user = await authorize(tx, uid, id);
+    const rows = await tx.$queryRaw<Array<{ title: string; createdBy: string; updatedAt: Date }>>`SELECT title,created_by AS "createdBy",updated_at AS "updatedAt" FROM public.tasks WHERE id=${target}::uuid AND workspace_id=${id}::uuid FOR UPDATE`;
+    const task = rows[0];
+    if (!task) throw new WorkspaceError("TASK_NOT_FOUND", 404, "Task không tồn tại.");
+    if (task.createdBy !== user.id && !["OWNER", "ADMIN"].includes(user.role)) throw new WorkspaceError("TASK_DELETE_FORBIDDEN", 403, "Chỉ người tạo task hoặc Owner/Admin được xóa task.");
+    if (task.updatedAt.getTime() !== new Date(input.expectedUpdatedAt).getTime()) throw new WorkspaceError("TASK_CONFLICT", 409, "Task đã thay đổi. Hãy tải lại trước khi xóa.");
+    // Deletion and its audit record commit together; task IDs never leave their workspace boundary.
+    await tx.$executeRaw`DELETE FROM public.tasks WHERE id=${target}::uuid AND workspace_id=${id}::uuid`;
+    await tx.$executeRaw`INSERT INTO public.activity_logs(workspace_id,content) VALUES (${id}::uuid, ${`${user.name} đã xóa task “${task.title}”.`})`;
+    return { deleted: true };
+  });
 }
 
 export async function listTasks(uid: string, workspaceId: unknown, database?: Database) {
@@ -80,7 +98,9 @@ export async function listTasks(uid: string, workspaceId: unknown, database?: Da
   return (database ?? getPrisma()).$transaction(async tx => {
     await authorize(tx, uid, id);
     return tx.$queryRaw`SELECT id, title, description, priority, status, position,
-      created_by AS "createdBy", assignee_id AS "assigneeId", workspace_id AS "workspaceId",
+      created_by AS "createdBy",
+      (SELECT CASE WHEN u.is_active THEN u.name ELSE 'Tài khoản đã xóa' END FROM public.users u WHERE u.id=created_by) AS "creatorName",
+      assignee_id AS "assigneeId", workspace_id AS "workspaceId",
       created_at AS "createdAt", updated_at AS "updatedAt", due_at AS "dueAt", completed_at AS "completedAt"
       FROM public.tasks WHERE workspace_id=${id}::uuid ORDER BY position, created_at, id`;
   });

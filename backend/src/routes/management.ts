@@ -1,3 +1,6 @@
+import { summarizeTasks } from "../lib/dashboard.js";
+import { verifyOwnerConfirmation, type VerifyOwnerToken } from "../lib/owner-confirmation.js";
+import { verifyFirebaseIdToken } from "../lib/firebase-admin.js";
 import { cleanupDeletedAccounts } from "../lib/account-cleanup.js";
 import { rateLimit } from "express-rate-limit";
 import { Router, type RequestHandler } from "express";
@@ -22,7 +25,7 @@ function requireRole(role: string, owner = false) {
   if (owner ? role !== "OWNER" : !["OWNER","ADMIN"].includes(role)) throw new WorkspaceError("FORBIDDEN",403,"Bạn không có quyền thực hiện thao tác này.");
 }
 
-export function createManagementRouter(database: Pick<PrismaClient,"$transaction"> = { $transaction: (...args: Parameters<PrismaClient["$transaction"]>) => getPrisma().$transaction(...args) } as Pick<PrismaClient,"$transaction">, auth: RequestHandler = requireFirebaseAuth) {
+export function createManagementRouter(database: Pick<PrismaClient,"$transaction"> = { $transaction: (...args: Parameters<PrismaClient["$transaction"]>) => getPrisma().$transaction(...args) } as Pick<PrismaClient,"$transaction">, auth: RequestHandler = requireFirebaseAuth, verifyOwner: VerifyOwnerToken = verifyFirebaseIdToken) {
 const management = Router();
 management.use(auth);
 management.use(rateLimit({ windowMs: 60000, limit: 120, standardHeaders: "draft-8", legacyHeaders: false, keyGenerator: (_req,res) => res.locals.firebaseIdentity.uid }));
@@ -33,7 +36,14 @@ management.all(["/invitations", "/invitations/:invitationId", "/workspaces/:id/m
     const id = req.params.id ? z.uuid().parse(req.params.id) : undefined;
     if (req.method !== "GET" && !req.is("application/json")) { res.status(415).json({ error:"Yêu cầu phải dùng JSON." }); return; }
     const body = req.body;
-    const passwordHash = req.path.endsWith('/manage') && typeof body?.password === 'string' ? await hash(z.string().min(8).max(128).parse(body.password), { memoryCost: 19456, timeCost: 2, parallelism: 1 }) : undefined;
+    const sensitive = id && req.method === "POST" && req.path.endsWith('/manage') && ["delete", "transfer", "password"].includes(body?.action);
+    // Verify Firebase proof outside the database transaction, then enforce Owner role inside it.
+    let confirmationError: unknown;
+    if (sensitive) {
+      try { await verifyOwnerConfirmation(res.locals.firebaseIdentity.uid, body?.ownerConfirmationToken, verifyOwner); }
+      catch (error) { confirmationError = error; }
+    }
+    const passwordHash = !confirmationError && req.path.endsWith('/manage') && body?.action === 'password' && typeof body?.password === 'string' ? await hash(z.string().min(8).max(128).parse(body.password), { memoryCost: 19456, timeCost: 2, parallelism: 1 }) : undefined;
     const result = await database.$transaction(async tx => {
       const { user, role } = await context(tx,res.locals.firebaseIdentity.uid,id);
       const log = async (content: string) => { if (id) await tx.activityLog.create({ data: { workspaceId:id,content:`${user.name}: ${content}` } }); };
@@ -80,8 +90,10 @@ management.all(["/invitations", "/invitations/:invitationId", "/workspaces/:id/m
       }
       if(id && req.method==="GET"){
         if(req.path.endsWith('/activity')) return tx.activityLog.findMany({where:{workspaceId:id},orderBy:[{createdAt:"desc"},{id:"desc"}],take:100});
-        const tasks=await tx.task.findMany({where:{workspaceId:id},select:{status:true,dueAt:true}});
-        return {total:tasks.length,done:tasks.filter(t=>t.status==="DONE").length,inProgress:tasks.filter(t=>t.status==="IN_PROGRESS").length,overdue:tasks.filter(t=>t.status!=="DONE"&&t.dueAt&&t.dueAt<new Date()).length};
+        const tasks=await tx.task.findMany({where:{workspaceId:id},include:{creator:{select:{name:true,isActive:true}}},orderBy:[{dueAt:"asc"},{id:"asc"}]});
+        const summary=summarizeTasks(tasks,new Date());
+        const recentActivity=await tx.activityLog.findMany({where:{workspaceId:id},orderBy:[{createdAt:"desc"},{id:"desc"}],take:5});
+        return {...summary,attention:summary.attention.map(({creator,...task})=>({...task,creatorName:creator.isActive?creator.name:"Tài khoản đã xóa"})),recentActivity};
       }
       if(id && req.path.endsWith('/manage') && req.method==="POST"){
         const input=z.discriminatedUnion("action",[
@@ -89,6 +101,7 @@ management.all(["/invitations", "/invitations/:invitationId", "/workspaces/:id/m
           z.object({action:z.literal("password"),password:z.string().min(8).max(128)}),z.object({action:z.literal("delete"),confirmation:z.string()}),
           z.object({action:z.enum(["promote","demote","remove","transfer"]),userId:z.uuid()})]).parse(body);
         requireRole(role,["rename","password","delete","transfer","promote","demote"].includes(input.action));
+        if (sensitive && confirmationError) throw confirmationError;
         if(input.action==="invite"){
           const target=await tx.user.findFirst({where:{email:{equals:input.email,mode:"insensitive"},isActive:true}});
           if(!target) throw new WorkspaceError("USER_NOT_FOUND",404,"Người nhận cần có tài khoản WorkNest.");

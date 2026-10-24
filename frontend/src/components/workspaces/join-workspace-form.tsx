@@ -4,9 +4,8 @@ import type { User } from "firebase/auth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { DoorOpen, LoaderCircle, X } from "lucide-react";
+import { DoorOpen, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getFirebaseAuth } from "@/lib/firebase/client";
@@ -43,20 +42,11 @@ export function JoinWorkspaceForm({ user, onClose, onJoined, onBusyChange }: Pro
   const busy = join.isPending || isSubmitting;
 
   return (
-    <Card className="mb-8 border-slate-200 shadow-sm">
-      <CardContent className="pt-6">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">Tham gia workspace</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Nhập mã và mật khẩu được người trong nhóm chia sẻ.</p>
-          </div>
-          <Button type="button" variant="ghost" size="icon" disabled={busy} aria-label="Đóng form tham gia workspace" onClick={onClose}><X /></Button>
-        </div>
         <form noValidate className="space-y-5" onSubmit={handleSubmit(async values => {
           try { await join.mutateAsync({ values, account: user }); }
           catch { /* Mutation state displays errors; retrying a successful join is idempotent. */ }
         })}>
-          <fieldset disabled={busy} className="grid gap-5 sm:grid-cols-2">
+          <fieldset disabled={busy} className="grid gap-5">
             <div className="space-y-2">
               <Label htmlFor="join-code">Mã nhóm</Label>
               <Input id="join-code" className="h-10 uppercase" placeholder="Ví dụ: A1B2C3D4E5F6" autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={20} aria-invalid={!!errors.joinCode} aria-describedby={errors.joinCode ? "join-code-error" : undefined} {...register("joinCode")} />
@@ -71,10 +61,8 @@ export function JoinWorkspaceForm({ user, onClose, onJoined, onBusyChange }: Pro
           {join.isError && <p role="alert" className="text-sm text-destructive">{workspaceErrorMessage(join.error)}</p>}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-muted-foreground">Thành viên mới tham gia với quyền Member.</p>
-            <Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="animate-spin" /> : <DoorOpen />}{busy ? "Đang tham gia..." : "Tham gia nhóm"}</Button>
+            <div className="flex gap-2"><Button type="button" variant="outline" disabled={busy} onClick={onClose}>Hủy</Button><Button type="submit" disabled={busy}>{busy ? <LoaderCircle className="animate-spin" /> : <DoorOpen />}{busy ? "Đang tham gia..." : "Tham gia nhóm"}</Button></div>
           </div>
         </form>
-      </CardContent>
-    </Card>
   );
 }

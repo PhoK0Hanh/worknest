@@ -9,7 +9,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   ArrowRight,
-  Copy,
   DoorOpen,
   Layers3,
   LoaderCircle,
@@ -17,10 +16,10 @@ import {
   Plus,
   RefreshCw,
   Users,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,6 +27,7 @@ import {
   WorkspaceMenuButton,
 } from "@/components/workspaces/worknest-shell";
 import { WorkspaceListSkeleton } from "@/components/workspaces/workspace-skeleton";
+import { CopyWorkspaceCode } from "@/components/workspaces/copy-workspace-code";
 import { Invitations } from "@/components/workspaces/management";
 import { JoinWorkspaceForm } from "@/components/workspaces/join-workspace-form";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
@@ -57,7 +57,6 @@ export function WorkspaceList() {
   const [showJoinForm, setShowJoinForm] = useState(false);
   const [joining, setJoining] = useState(false);
   const [notice, setNotice] = useState("");
-  const [copyMessages, setCopyMessages] = useState<Record<string, string>>({});
   const [loggingOut, setLoggingOut] = useState(false);
   const {
     register,
@@ -119,37 +118,11 @@ export function WorkspaceList() {
     }
   }
 
-  async function copyCode(workspace: Workspace) {
-    // Keep clipboard feedback attached to its workspace, including asynchronous failures.
-    try {
-      await navigator.clipboard.writeText(workspace.joinCode);
-      setCopyMessages((current) => ({
-        ...current,
-        [workspace.id]: "Đã sao chép mã nhóm.",
-      }));
-    } catch {
-      setCopyMessages((current) => ({
-        ...current,
-        [workspace.id]: "Không thể sao chép. Hãy chọn mã và sao chép thủ công.",
-      }));
-    }
-  }
-
-  if (!session.ready || (!session.user && !session.failed)) {
-    return (
-      <main
-        role="status"
-        className="flex min-h-svh items-center justify-center gap-3 text-muted-foreground"
-      >
-        <LoaderCircle className="size-5 animate-spin" />
-        Đang kiểm tra đăng nhập...
-      </main>
-    );
-  }
-
+  // Keep the application frame visible while Firebase restores the browser session.
+  const sessionLoading = !session.ready || (!session.user && !session.failed);
   const profileLoading =
-    !!session.user && (profile.isPending || profile.isFetching);
-  const ready = !!session.user && profile.isSuccess && !profile.isFetching;
+    sessionLoading || (!!session.user && (profile.isPending || profile.isFetching));
+  const ready = session.ready && !!session.user && profile.isSuccess && !profile.isFetching;
 
   return (
     <WorkNestShell
@@ -168,13 +141,13 @@ export function WorkspaceList() {
     >
       {/* Keep the mobile menu trigger in the same row as the page title. */}
       <header className="sticky top-0 z-20 flex h-20 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 lg:px-8">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <WorkspaceMenuButton />
           <p className="truncate text-lg font-semibold tracking-tight">
             Không gian làm việc
           </p>
         </div>
-        <p className="text-sm text-muted-foreground">
+        <p className="hidden max-w-60 shrink-0 truncate text-sm text-muted-foreground sm:block">
           Chào {profile.data?.name || "bạn"}!
         </p>
       </header>
@@ -260,6 +233,9 @@ export function WorkspaceList() {
         )}
 
         {showJoinForm && ready && session.user && (
+          <Dialog open onOpenChange={value => { if (!value && !joining) setShowJoinForm(false); }}>
+            <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+              <DialogHeader><DialogTitle>Tham gia workspace</DialogTitle><DialogDescription>Nhập mã và mật khẩu được người trong nhóm chia sẻ.</DialogDescription></DialogHeader>
           <JoinWorkspaceForm
             key={session.user.uid}
             user={session.user}
@@ -274,27 +250,15 @@ export function WorkspaceList() {
               );
             }}
           />
+            </DialogContent>
+          </Dialog>
         )}
 
         {showForm && ready && (
-          <Card className="mb-8 border-slate-200 shadow-sm">
-            <CardContent className="pt-6">
-              <div className="mb-5 flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Tạo workspace mới</h2>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  disabled={create.isPending}
-                  aria-label="Đóng form tạo workspace"
-                  onClick={() => {
-                    setShowForm(false);
-                    reset();
-                    create.reset();
-                  }}
-                >
-                  <X />
-                </Button>
-              </div>
+          <Dialog open onOpenChange={value => { if (!value && !create.isPending && !isSubmitting) { setShowForm(false); reset(); create.reset(); } }}>
+            {/* Forms open above the list so workspace cards never shift when a dialog opens. */}
+            <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+              <DialogHeader><DialogTitle>Tạo workspace mới</DialogTitle><DialogDescription>Đặt tên và mật khẩu tham gia cho nhóm của bạn.</DialogDescription></DialogHeader>
               <form
                 noValidate
                 onSubmit={handleSubmit(async (values) => {
@@ -309,7 +273,7 @@ export function WorkspaceList() {
               >
                 <fieldset
                   disabled={create.isPending || isSubmitting}
-                  className="grid gap-5 sm:grid-cols-2"
+                  className="grid gap-5"
                 >
                   <div className="space-y-2">
                     <Label htmlFor="workspace-name">Tên workspace</Label>
@@ -394,8 +358,8 @@ export function WorkspaceList() {
                   </Button>
                 </div>
               </form>
-            </CardContent>
-          </Card>
+            </DialogContent>
+          </Dialog>
         )}
 
         {ready && workspaces.isPending && <WorkspaceListSkeleton />}
@@ -416,8 +380,7 @@ export function WorkspaceList() {
         {ready &&
           workspaces.isSuccess &&
           workspaces.data.length === 0 &&
-          !showForm &&
-          !showJoinForm && (
+          (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
               <span className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl bg-slate-50 text-primary">
                 <Layers3 />
@@ -432,8 +395,7 @@ export function WorkspaceList() {
               <Button
                 className="mt-6"
                 onClick={() => {
-                  create.reset();
-                  setShowForm(true);
+                  reset(); create.reset(); setShowJoinForm(false); setShowForm(true); setNotice("");
                 }}
               >
                 <Plus />
@@ -443,7 +405,7 @@ export function WorkspaceList() {
               <Button
                 variant="outline"
                 className="mt-3 ml-3"
-                onClick={() => setShowJoinForm(true)}
+                onClick={() => { reset(); create.reset(); setShowForm(false); setShowJoinForm(true); setNotice(""); }}
               >
                 <DoorOpen />
                 Tham gia nhóm có sẵn
@@ -480,32 +442,9 @@ export function WorkspaceList() {
                   </p>
                   {/* Keep the join code aligned at the bottom, even with longer workspace names. */}
                   <div className="mt-auto pt-6">
-                    <div className="flex items-center justify-between gap-2 rounded-lg bg-muted/60 px-3 py-2">
-                      <div>
-                        <p className="text-[11px] text-muted-foreground">
-                          Mã nhóm
-                        </p>
-                        <code className="text-sm tracking-wider">
-                          {workspace.joinCode}
-                        </code>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Sao chép mã nhóm ${workspace.name}`}
-                        onClick={() => void copyCode(workspace)}
-                      >
-                        <Copy className="size-4" />
-                      </Button>
-                    </div>
+                    {/* Share the same per-card clipboard animation as workspace settings. */}
+                    <CopyWorkspaceCode key={workspace.joinCode} code={workspace.joinCode} label="Mã nhóm" />
                   </div>
-                  <p
-                    role="status"
-                    aria-atomic="true"
-                    className="mt-2 min-h-5 text-xs text-muted-foreground"
-                  >
-                    {copyMessages[workspace.id] ?? ""}
-                  </p>
                 </CardContent>
               </Card>
             ))}

@@ -14,17 +14,25 @@ export function WorkspaceListSkeleton() {
   </div>;
 }
 
-export function WorkspaceDetailSkeleton() {
-  return <div role="status" aria-label="Đang tải chi tiết workspace">
-    <span className="sr-only">Đang tải chi tiết workspace...</span>
-    <div aria-hidden="true">
-      <Skeleton className="h-7 w-40" /><Skeleton className="mt-3 h-4 w-2/3 max-w-sm" />
-      <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="rounded-xl border border-border p-6"><Skeleton className="mb-5 h-6 w-32" />
-          {Array.from({ length: 4 }, (_, index) => <div key={index} className="flex items-center gap-3 border-t border-border py-4"><Skeleton className="size-10 shrink-0 rounded-full" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-1/2" /><Skeleton className="h-3 w-3/4" /><Skeleton className="h-3 w-1/3" /></div><Skeleton className="h-6 w-14 rounded-full" /></div>)}
-        </div>
-        <div className="space-y-6">{[0, 1].map(index => <div key={index} className="space-y-4 rounded-xl border border-border p-6"><Skeleton className="h-5 w-3/4" /><Skeleton className="h-12 w-full" /><Skeleton className="h-4 w-2/3" /></div>)}</div>
-      </div>
+// Loading matches the default board tab instead of the former members/sidebar layout.
+export function WorkspaceTabsSkeleton() {
+  return <div aria-hidden="true" className="flex h-12 items-center gap-6 overflow-hidden border-b px-5 lg:px-8">{[120, 100, 90, 100, 80].map((width, index) => <Skeleton key={index} className="h-4 shrink-0" style={{ width }} />)}</div>;
+}
+
+export function TaskColumnsSkeleton() {
+  return <div role="status" aria-label="Đang tải task" className="max-w-full overflow-x-auto pb-2">
+    <div aria-hidden="true" className="grid min-w-[840px] grid-cols-3 items-start gap-4">
+      {[0, 1, 2].map(index => <Card key={index} className="gap-0"><CardContent className="space-y-5">
+        <div className="flex items-center justify-between"><Skeleton className="h-5 w-28" /><Skeleton className="size-5" /></div>
+        {[0, 1].map(item => <div key={item} className="space-y-3 rounded-lg border p-3"><div className="flex justify-between gap-3"><Skeleton className="h-4 w-3/5" /><Skeleton className="h-5 w-12" /></div><div className="flex justify-between gap-3"><Skeleton className="h-4 w-1/2" /><Skeleton className="h-4 w-16" /></div></div>)}
+      </CardContent></Card>)}
     </div>
+  </div>;
+}
+
+export function WorkspaceDetailSkeleton() {
+  return <div className="space-y-6">
+    <div aria-hidden="true" className="flex items-center justify-between gap-4"><div className="min-w-0 flex-1 space-y-3"><Skeleton className="h-7 w-40" /><Skeleton className="h-4 w-2/3 max-w-sm" /></div><Skeleton className="h-8 w-24 shrink-0" /></div>
+    <TaskColumnsSkeleton />
   </div>;
 }

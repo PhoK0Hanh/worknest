@@ -431,6 +431,8 @@ function Kanban<T>({
           overIndex = overItems.length
         }
 
+        // A cross-column render may already have moved the active item.
+        if (activeIndex < 0) return;
         const newActiveItems = [...activeItems]
         const newOverItems = [...overItems]
         const [movedItem] = newActiveItems.splice(activeIndex, 1)
@@ -450,7 +452,7 @@ function Kanban<T>({
           (item: T) => getItemValue(item) === over.id
         )
 
-        if (activeIndex !== overIndex) {
+        if (activeIndex >= 0 && overIndex >= 0 && activeIndex !== overIndex) {
           setColumns({
             ...columns,
             [container]: arrayMove(columns[container], activeIndex, overIndex),
@@ -496,9 +498,9 @@ function Kanban<T>({
       onDragEnd?.(event)
 
       if (!over) {
-        // Released over nothing. In default mode the live preview during
-        // dragOver may have already moved the item, so commit the current value.
-        commitChange(valueRef.current, event, "item")
+        // Dropping outside the board cancels preview changes when restoreOnCancel is enabled.
+        if (restoreOnCancel && dragOriginRef.current) setColumns(dragOriginRef.current.value);
+        else commitChange(valueRef.current, event, "item")
         dragOriginRef.current = null
         return
       }
@@ -602,6 +604,7 @@ function Kanban<T>({
       setColumns,
       onMove,
       onDragEnd,
+      restoreOnCancel,
       commitChange,
     ]
   )

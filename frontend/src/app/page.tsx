@@ -2,7 +2,7 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 
 export default function Home() {
-  // Initial frontend scaffold; these features are planned, not implemented.
+  // Public introduction to the implemented collaboration features.
   return (
     <main className="mx-auto flex min-h-screen max-w-5xl flex-col justify-center px-6 py-16">
       <p className="mb-6 text-sm font-semibold tracking-widest text-primary">WORKNEST</p>
@@ -14,10 +14,14 @@ export default function Home() {
         <Link href="/workspaces" className={buttonVariants({ variant: "ghost", size: "lg" })}>Workspace của tôi</Link>
       </div>
       <div className="mt-10 grid gap-4 sm:grid-cols-3">
-        {["Workspace & thành viên", "Kanban Board", "Realtime & Dashboard"].map((title) => (
+        {[
+          { title: "Workspace & thành viên", description: "Tạo nhóm, mời thành viên và phân quyền Owner, Admin, Member." },
+          { title: "Kanban Board", description: "Tạo, chỉnh sửa và kéo thả công việc theo trạng thái." },
+          { title: "Realtime & Dashboard", description: "Đồng bộ thay đổi trong nhóm và theo dõi tiến độ công việc." },
+        ].map(({ title, description }) => (
           <section key={title} className="rounded-2xl border border-border bg-background p-6">
             <h2 className="font-semibold">{title}</h2>
-            <p className="mt-3 text-sm text-muted-foreground">Sẽ triển khai</p>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">{description}</p>
           </section>
         ))}
       </div>

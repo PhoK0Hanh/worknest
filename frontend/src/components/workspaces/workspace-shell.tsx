@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Activity, Columns3, LayoutGrid, ShieldCheck, Users } from "lucide-react";
+import { Activity, Columns3, LayoutGrid, ShieldCheck, Settings, Users } from "lucide-react";
 import { WorkNestShell, WorkspaceMenuButton } from "@/components/workspaces/worknest-shell";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { WorkspaceInsights } from "@/components/workspaces/management";
+import { WorkspaceOverview } from "@/components/workspaces/workspace-overview";
 import { TaskBoard } from "@/components/workspaces/task-board";
 import type { WorkspaceDetail } from "@/lib/workspaces";
 
@@ -13,16 +14,19 @@ const tabs = [
   { id: "members", label: "Thành viên", icon: Users },
   { id: "overview", label: "Tổng quan", icon: LayoutGrid },
   { id: "activity", label: "Hoạt động", icon: Activity },
+  { id: "settings", label: "Cài đặt", icon: Settings },
 ] as const;
 type Tab = typeof tabs[number]["id"];
 const roles: Record<string, string> = { OWNER: "Owner", ADMIN: "Admin", MEMBER: "Member" };
 
-export function WorkspaceShell({ workspace, profileName, children }: {
+export function WorkspaceShell({ workspace, profileName, children, settingsContent }: {
   workspace: WorkspaceDetail;
   profileName: string;
   children: ReactNode;
+  settingsContent: ReactNode;
 }) {
-  const [tab, setTab] = useState<Tab>("members");
+  // Open the task board by default when entering a workspace.
+  const [tab, setTab] = useState<Tab>("board");
   const tabList = useRef<HTMLDivElement>(null);
   const [indicator, setIndicator] = useState<{ left: number; width: number } | null>(null);
   useEffect(() => {
@@ -68,10 +72,11 @@ export function WorkspaceShell({ workspace, profileName, children }: {
 
           {/* Each trigger owns a stable panel for keyboard and screen-reader navigation. */}
           <TabsContent value="members" className="m-0 p-5 lg:p-8">{children}</TabsContent>
-            <TabsContent value="overview" className="m-0 p-5 lg:p-8"><WorkspaceInsights id={workspace.id} /></TabsContent>
+            <TabsContent value="overview" className="m-0 p-5 lg:p-8"><WorkspaceOverview workspace={workspace} onBoard={() => setTab("board")} onActivity={() => setTab("activity")} /></TabsContent>
             {/* The task board loads authorized records; activity rendering is still pending. */}
             <TabsContent value="board" className="m-0 p-5 lg:p-8"><TaskBoard workspace={workspace} /></TabsContent>
             <TabsContent value="activity" className="m-0 p-5 lg:p-8"><WorkspaceInsights id={workspace.id} activity /></TabsContent>
+            <TabsContent value="settings" className="m-0 p-5 lg:p-8">{settingsContent}</TabsContent>
           </Tabs>
     </WorkNestShell>
   );

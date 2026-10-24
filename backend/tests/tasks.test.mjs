@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { createTask, listTasks, reorderTasks, updateTask } from '../dist/services/tasks.js';
+import { createTask, listTasks, reorderTasks, updateTask, deleteTask } from '../dist/services/tasks.js';
 import { getPrisma, disconnectDatabase } from '../dist/lib/prisma.js';
 
 test('task validation rejects forged creator/status and malformed fields before querying', async () => {
@@ -42,6 +42,7 @@ test('Neon task authorization, assignment, ordering and atomic log rollback', { 
       await createTask('task-owner', group, { title: 'Second' }, db);
       const tasks = await listTasks('task-owner', group, db);
       assert.equal(tasks.length, 2); assert.equal(tasks[0].title, 'First');
+      assert.equal(tasks[0].creatorName, 'Owner'); assert.equal(tasks[0].createdBy, owner);
       assert.equal(tasks[0].assigneeId, owner); assert.equal(tasks[0].status, 'TODO');
       assert.equal(tasks[0].dueAt.toISOString(), '2026-12-01T03:30:00.000Z');
       assert.equal(tasks[1].position, 2); assert.equal(tasks[1].assigneeId, null);
@@ -78,6 +79,21 @@ test('Neon task authorization, assignment, ordering and atomic log rollback', { 
       failLog = true;
       await assert.rejects(updateTask('task-owner', group, snapshot.id, { ...edit, title: 'Rollback edit', expectedUpdatedAt: again.updatedAt.toISOString() }, db));
       assert.equal((await listTasks('task-owner', group, db)).find(task => task.id === snapshot.id).title, 'Edited again');
+      await assert.rejects(deleteTask('task-owner', group, snapshot.id, { expectedUpdatedAt: again.updatedAt.toISOString() }, db));
+      assert.equal((await listTasks('task-owner', group, db)).length, 2);
+      failLog = false;
+      await assert.rejects(deleteTask('task-outsider', group, snapshot.id, { expectedUpdatedAt: again.updatedAt.toISOString() }, db), error => error.code === 'WORKSPACE_NOT_FOUND');
+      await tx.$executeRaw`INSERT INTO pg_temp.task_test_memberships(user_id,workspace_id,role) VALUES (${outsider}::uuid,${group}::uuid,'MEMBER')`;
+      await assert.rejects(deleteTask('task-outsider', group, snapshot.id, { expectedUpdatedAt: again.updatedAt.toISOString() }, db), error => error.code === 'TASK_DELETE_FORBIDDEN');
+      await assert.rejects(deleteTask('task-owner', group, snapshot.id, { expectedUpdatedAt: snapshot.updatedAt.toISOString() }, db), error => error.code === 'TASK_CONFLICT');
+      await tx.$executeRaw`UPDATE pg_temp.task_test_memberships SET role='ADMIN' WHERE user_id=${outsider}::uuid`;
+      await deleteTask('task-outsider', group, snapshot.id, { expectedUpdatedAt: again.updatedAt.toISOString() }, db);
+      assert.equal((await listTasks('task-owner', group, db)).length, 1);
+      await tx.$executeRaw`UPDATE pg_temp.task_test_memberships SET role='MEMBER' WHERE user_id=${owner}::uuid`;
+      const remaining = (await listTasks('task-owner', group, db))[0];
+      await deleteTask('task-owner', group, remaining.id, { expectedUpdatedAt: remaining.updatedAt.toISOString() }, db);
+      assert.equal((await listTasks('task-owner', group, db)).length, 0);
+
 
     }, { timeout: 30000, maxWait: 10000 });
   } finally { await disconnectDatabase(); }
