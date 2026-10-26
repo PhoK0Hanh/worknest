@@ -15,13 +15,14 @@ import { getFirebaseAuth } from "@/lib/firebase/client";
 import { workspaceErrorMessage, type WorkspaceDetail } from "@/lib/workspaces";
 import type { Task } from "./task-board";
 import axios from "axios";
-const priorities: Record<string, string> = { LOW: "LOW", MEDIUM: "MEDIUM", HIGH: "HIGH" };
+import { taskPriorityLabels, taskStatusLabels } from "@/lib/task-labels";
+const priorities = taskPriorityLabels;
 function localDate(value: string | null) {
   if (!value) return "";
   const date = new Date(value);
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
-export function TaskEditor({ task, workspace, uid, onClose }: { task: Task; workspace: WorkspaceDetail; uid: string; onClose: () => void }) {
+export function TaskEditor({ task, workspace, uid, onClose, onSaved }: { task: Task; workspace: WorkspaceDetail; uid: string; onClose: () => void; onSaved?: () => void }) {
   const client = useQueryClient();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const currentUserId = client.getQueryData<{ id: string }>(["worknest-profile", uid])?.id;
@@ -34,7 +35,11 @@ export function TaskEditor({ task, workspace, uid, onClose }: { task: Task; work
     if (!user || user.uid !== uid) throw new Error("Session changed");
     await api.patch(`/workspaces/${workspace.id}/tasks/${task.id}`, input, { headers: { Authorization: `Bearer ${await user.getIdToken()}` } });
   }, onSuccess: async () => {
-    await client.invalidateQueries({ queryKey: ["tasks", uid, workspace.id] });
+    await Promise.all([
+      ...["tasks", "dashboard", "activity"].map(key => client.invalidateQueries({ queryKey: [key, uid, workspace.id] })),
+      client.invalidateQueries({ queryKey: ["my-tasks", uid] }),
+    ]);
+    if (getFirebaseAuth().currentUser?.uid === uid) onSaved?.();
     onClose();
   }});
   const remove = useMutation({
@@ -46,6 +51,7 @@ export function TaskEditor({ task, workspace, uid, onClose }: { task: Task; work
     },
     onSuccess: async () => {
       await Promise.all(["tasks", "dashboard", "activity"].map(key => client.invalidateQueries({ queryKey: [key, uid, workspace.id] })));
+      await client.invalidateQueries({ queryKey: ["my-tasks", uid] });
       onClose();
     },
   });
@@ -65,7 +71,7 @@ export function TaskEditor({ task, workspace, uid, onClose }: { task: Task; work
       <div className="space-y-2"><Label htmlFor="edit-task-priority">Độ ưu tiên</Label><Select value={priority} onValueChange={setPriority}><SelectTrigger id="edit-task-priority" className="w-full"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(priorities).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>
       <div className="space-y-2"><Label htmlFor="edit-task-assignee">Người phụ trách</Label><Select value={assignee} onValueChange={setAssignee}><SelectTrigger id="edit-task-assignee" className="w-full"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none">Chưa được giao</SelectItem>{workspace.members.map(member => <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>)}</SelectContent></Select></div>
       <div className="space-y-2"><Label htmlFor="edit-task-due">Hạn hoàn thành</Label><Input id="edit-task-due" name="dueAt" type="datetime-local" defaultValue={localDate(task.dueAt)} /></div>
-<div className="space-y-2"><Label htmlFor="edit-task-status">Trạng thái</Label><Select value={status} onValueChange={setStatus}><SelectTrigger id="edit-task-status" className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["TODO", "IN_PROGRESS", "DONE"].map(value => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
+<div className="space-y-2"><Label htmlFor="edit-task-status">Trạng thái</Label><Select value={status} onValueChange={setStatus}><SelectTrigger id="edit-task-status" className="w-full"><SelectValue /></SelectTrigger><SelectContent>{["TODO", "IN_PROGRESS", "DONE"].map(value => <SelectItem key={value} value={value}>{taskStatusLabels[value] ?? value}</SelectItem>)}</SelectContent></Select></div>
 </fieldset>{save.isError && <p role="alert" className="text-sm text-destructive">{conflict ? "Task đã thay đổi. Đóng, tải lại bảng và mở lại task." : workspaceErrorMessage(save.error)}</p>}{conflict && <Button type="button" variant="outline" onClick={() => { void client.invalidateQueries({ queryKey: ["tasks", uid, workspace.id] }); onClose(); }}>Tải lại bảng</Button>}</form>
 {/* Keep primary and destructive actions together without submitting the form on delete. */}
 <div className="mt-5 flex flex-wrap items-center justify-between gap-3">

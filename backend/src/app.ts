@@ -1,4 +1,5 @@
 import { management } from "./routes/management.js";
+import { createMyTasksHandler } from "./routes/my-tasks.js";
 import { createTaskHandlers } from "./routes/tasks.js";
 import express, { type ErrorRequestHandler } from "express";
 import cors from "cors";
@@ -57,6 +58,8 @@ app.get("/api/workspaces/:id", requireFirebaseAuth, workspaces.detail);
 app.post("/api/workspaces/:id/leave", requireFirebaseAuth, workspaces.leave);
 
 const tasks = createTaskHandlers();
+app.get("/api/my-tasks", requireFirebaseAuth, createMyTasksHandler());
+app.get("/api/workspaces/:id/tasks/:taskId", requireFirebaseAuth, tasks.detail);
 app.patch("/api/workspaces/:id/tasks/order", requireFirebaseAuth, tasks.reorder);
 app.delete("/api/workspaces/:id/tasks/:taskId", requireFirebaseAuth, tasks.remove);
 app.patch("/api/workspaces/:id/tasks/:taskId", requireFirebaseAuth, tasks.update);

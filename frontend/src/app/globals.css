@@ -161,3 +161,64 @@ body {
     @apply font-sans;
   }
 }
+
+/* Animate panels, not the application frame; child refetches do not replay tab entry. */
+@media (prefers-reduced-motion: no-preference) {
+  .worknest-tab-panel[data-state="active"] {
+    animation: worknest-panel-in 180ms ease-out;
+  }
+
+  .worknest-disclosure[data-state="open"] {
+    animation: worknest-disclosure-open 200ms ease-out;
+  }
+
+  .worknest-disclosure[data-state="closed"] {
+    animation: worknest-disclosure-close 150ms ease-in;
+  }
+
+  .worknest-notice {
+    animation: worknest-panel-in 180ms ease-out;
+  }
+}
+
+@keyframes worknest-panel-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Radix measures content height, so disclosure motion also handles wrapped mobile text. */
+@keyframes worknest-disclosure-open {
+  from { height: 0; opacity: 0; }
+  to { height: var(--radix-collapsible-content-height); opacity: 1; }
+}
+
+@keyframes worknest-disclosure-close {
+  from { height: var(--radix-collapsible-content-height); opacity: 1; }
+  to { height: 0; opacity: 0; }
+}
+
+.worknest-task-highlight {
+  background-color: #ecfdf5;
+  box-shadow: inset 0 0 0 1px #6ee7b7;
+}
+
+/* A single moving pill paints the selected scope; each trigger keeps its focus styling. */
+.worknest-sliding-tabs[data-indicator-ready="true"] [data-slot="tabs-trigger"][data-state="active"] {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* Cover existing Radix overlays and skeletons as well as the new opt-in effects. */
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="button"] {
+    scale: 1 !important;
+    translate: none !important;
+  }
+
+  [data-slot], [data-slot]::before, [data-slot]::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

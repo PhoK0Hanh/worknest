@@ -1,4 +1,5 @@
 import type { RequestHandler } from "express";
+import { notifyTasksChanged } from "../lib/realtime.js";
 import { createWorkspace, listWorkspaces, joinWorkspace, getWorkspace, leaveWorkspace, WorkspaceError } from "../services/workspaces.js";
 
 export function createWorkspaceHandlers(services = { createWorkspace, listWorkspaces, joinWorkspace, getWorkspace, leaveWorkspace }) {
@@ -45,6 +46,7 @@ export function createWorkspaceHandlers(services = { createWorkspace, listWorksp
     response.set("Cache-Control", "no-store");
     try {
       response.json(await services.leaveWorkspace(response.locals.firebaseIdentity.uid, request.params.id));
+      if (typeof request.params.id === "string") notifyTasksChanged(request.params.id);
     } catch (error) { failure(response, error); }
   };
   return { list, create, join, detail, leave };

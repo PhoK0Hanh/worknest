@@ -7,7 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { getFirebaseAuth } from "@/lib/firebase/client";
 
-export function useTaskRealtime(user: User | null, workspaceId: string) {
+export function useTaskRealtime(user: User | null, workspaceId?: string) {
   const client = useQueryClient();
   const [state, setState] = useState<"connecting" | "connected" | "offline">("connecting");
   useEffect(() => {
@@ -25,12 +25,18 @@ export function useTaskRealtime(user: User | null, workspaceId: string) {
     });
     const refresh = () => {
       if (disposed) return;
+      void client.invalidateQueries({ queryKey: ["my-tasks", user.uid] });
+      if (!workspaceId) {
+        void client.invalidateQueries({ queryKey: ["my-task-detail", user.uid] });
+        void client.invalidateQueries({ queryKey: ["workspaces", user.uid] });
+        return;
+      }
       void client.invalidateQueries({ queryKey: ["tasks", user.uid, workspaceId] });
       void client.invalidateQueries({ queryKey: ["dashboard", user.uid, workspaceId] });
       void client.invalidateQueries({ queryKey: ["activity", user.uid, workspaceId] });
     };
     socket.on("connect", () => {
-      socket.emit("workspace:subscribe", { workspaceId }, (result: { ok: boolean }) => {
+      socket.emit(workspaceId ? "workspace:subscribe" : "my-tasks:subscribe", { workspaceId }, (result: { ok: boolean }) => {
         if (disposed) return;
         if (result.ok) { setState("connected"); refresh(); }
         else setState("offline");
@@ -39,12 +45,13 @@ export function useTaskRealtime(user: User | null, workspaceId: string) {
     socket.on("tasks:changed", (event: { workspaceId: string }) => {
       if (event.workspaceId === workspaceId) refresh();
     });
+    socket.on("my-tasks:changed", refresh);
     socket.on("connect_error", () => { if (!disposed) setState("offline"); });
     socket.on("disconnect", () => {
       if (!disposed) {
         setState("offline");
         refresh();
-        void client.invalidateQueries({ queryKey: ["workspace", user.uid, workspaceId] });
+        if (workspaceId) void client.invalidateQueries({ queryKey: ["workspace", user.uid, workspaceId] });
       }
     });
     // Server disconnects (expired tokens or lost permission) need an explicit reconnect with fresh auth.

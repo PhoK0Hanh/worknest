@@ -93,6 +93,22 @@ export async function deleteTask(uid: string, workspaceId: unknown, taskId: unkn
   });
 }
 
+export async function getTask(uid: string, workspaceId: unknown, taskId: unknown, database?: Database) {
+  const id = z.uuid().parse(workspaceId);
+  const target = z.uuid().parse(taskId);
+  return (database ?? getPrisma()).$transaction(async tx => {
+    await authorize(tx, uid, id);
+    // Fetch a fresh edit snapshot without downloading every task in the workspace.
+    const rows = await tx.$queryRaw<Array<Record<string, unknown>>>`SELECT id,title,description,priority,status,position,
+      created_by AS "createdBy",assignee_id AS "assigneeId",workspace_id AS "workspaceId",
+      (SELECT CASE WHEN u.is_active THEN u.name ELSE 'Tài khoản đã xóa' END FROM public.users u WHERE u.id=created_by) AS "creatorName",
+      created_at AS "createdAt",updated_at AS "updatedAt",due_at AS "dueAt",completed_at AS "completedAt"
+      FROM public.tasks WHERE id=${target}::uuid AND workspace_id=${id}::uuid`;
+    if (!rows[0]) throw new WorkspaceError("TASK_NOT_FOUND", 404, "Task không tồn tại.");
+    return rows[0];
+  });
+}
+
 export async function listTasks(uid: string, workspaceId: unknown, database?: Database) {
   const id = z.uuid().parse(workspaceId);
   return (database ?? getPrisma()).$transaction(async tx => {

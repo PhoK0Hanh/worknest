@@ -18,11 +18,13 @@ import { workspaceErrorMessage, type WorkspaceDetail } from "@/lib/workspaces";
 import { TaskEditor } from "@/components/workspaces/task-editor";
 import { useTaskRealtime } from "@/lib/use-task-realtime";
 import axios from "axios";
+import { taskPriorityLabels } from "@/lib/task-labels";
+import { useTaskSaveFeedback } from "@/lib/use-task-save-feedback";
 
 export type Task = { createdBy: string; creatorName: string; id: string; title: string; description: string | null; priority: string; status: string; assigneeId: string | null; dueAt: string | null; createdAt: string; updatedAt: string; completedAt: string | null };
 type TaskInput = { title: string; description: string | null; priority: string; assigneeId: string | null; dueAt: string | null };
-const columns = [{ id: "TODO", label: "Todo" }, { id: "IN_PROGRESS", label: "In Progress" }, { id: "DONE", label: "Done" }];
-const priorities: Record<string, string> = { LOW: "Thấp", MEDIUM: "Trung bình", HIGH: "Cao" };
+const columns = [{ id: "TODO" }, { id: "IN_PROGRESS" }, { id: "DONE" }];
+const priorities = taskPriorityLabels;
 function message(error: unknown) {
   if (axios.isAxiosError(error)) {
     if (error.response?.data?.code === "ASSIGNEE_INVALID") return "Người được giao không còn là thành viên hoạt động. Hãy tải lại trang.";
@@ -34,6 +36,7 @@ function message(error: unknown) {
 export function TaskBoard({ workspace }: { workspace: WorkspaceDetail }) {
   const session = useAuthSession();
   const client = useQueryClient();
+  const feedback = useTaskSaveFeedback();
   // Keep receiving workspace updates without displaying connection status in the board.
   useTaskRealtime(session.user, workspace.id);
   const [moveError, setMoveError] = useState(false);
@@ -72,7 +75,7 @@ export function TaskBoard({ workspace }: { workspace: WorkspaceDetail }) {
   return <section aria-label="Bảng công việc" className="space-y-6">
     <div className="flex flex-wrap items-center justify-between gap-4"><div><h2 className="text-xl font-semibold">Bảng công việc</h2><p className="mt-2 text-sm text-muted-foreground">Theo dõi công việc của nhóm theo trạng thái.</p></div><Button disabled={!session.user} onClick={() => { create.reset(); setPriority("MEDIUM"); setAssignee("none"); setOpen(true); }}><Plus />Tạo task</Button></div>
     {moveError && <p role="alert" className="rounded-lg border border-destructive/30 p-3 text-sm text-destructive">Chưa lưu được thao tác hoặc bảng đã thay đổi. Dữ liệu đang được tải lại từ máy chủ.</p>}
-    {tasks.isError ? <div role="alert" className="space-y-3 rounded-xl border p-5"><p>{message(tasks.error)}</p><Button variant="outline" onClick={() => void tasks.refetch()}>Tải lại</Button></div> : tasks.isPending ? <TaskColumnsSkeleton /> : <DynamicTaskKanban onTaskClick={id => { const task = tasks.data?.find(item => item.id === id); if (task) setSelected(task); }} key={`${session.user?.uid}:${workspace.id}:${tasks.dataUpdatedAt}`} initial={Object.fromEntries(columns.map(column => [column.id, (tasks.data ?? []).filter(task => task.status === column.id).map(task => ({ id: task.id, title: task.title, description: task.description ?? undefined, priority: task.priority.toLowerCase() as KanbanTask["priority"], assignee: task.assigneeId ? workspace.members.find(member => member.id === task.assigneeId)?.name ?? "Thành viên cũ" : undefined, dueDate: task.dueAt ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(new Date(task.dueAt)) : undefined }))]))} onSave={async (next, previous) => {
+    {tasks.isError ? <div role="alert" className="space-y-3 rounded-xl border p-5"><p>{message(tasks.error)}</p><Button variant="outline" onClick={() => void tasks.refetch()}>Tải lại</Button></div> : tasks.isPending ? <TaskColumnsSkeleton /> : <DynamicTaskKanban highlightedTaskId={feedback.taskId} onTaskClick={id => { const task = tasks.data?.find(item => item.id === id); if (task) setSelected(task); }} key={`${session.user?.uid}:${workspace.id}:${tasks.dataUpdatedAt}`} initial={Object.fromEntries(columns.map(column => [column.id, (tasks.data ?? []).filter(task => task.status === column.id).map(task => ({ id: task.id, title: task.title, description: task.description ?? undefined, priority: task.priority.toLowerCase() as KanbanTask["priority"], assignee: task.assigneeId ? workspace.members.find(member => member.id === task.assigneeId)?.name ?? "Thành viên cũ" : undefined, dueDate: task.dueAt ? new Intl.DateTimeFormat("vi-VN", { dateStyle: "medium" }).format(new Date(task.dueAt)) : undefined }))]))} onSave={async (next, previous) => {
       const user = session.user;
       if (!user || getFirebaseAuth().currentUser?.uid !== user.uid) throw new Error("Session changed");
       const ids = (value: Record<string, KanbanTask[]>) => Object.fromEntries(columns.map(column => [column.id, value[column.id].map(task => task.id)]));
@@ -87,8 +90,8 @@ export function TaskBoard({ workspace }: { workspace: WorkspaceDetail }) {
         await client.invalidateQueries({ queryKey: ["tasks", user.uid, workspace.id] });
       }
     }} />}
-    {selected && session.user && <TaskEditor key={selected.id} task={selected} workspace={workspace} uid={session.user.uid} onClose={() => setSelected(null)} />}
-    <Dialog open={open} onOpenChange={value => { if (!create.isPending) setOpen(value); }}><DialogContent className="max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Tạo task</DialogTitle><DialogDescription>Task mới được thêm vào cột Todo. Hạn hiển thị theo giờ địa phương của bạn.</DialogDescription></DialogHeader><form onSubmit={submit} className="space-y-4"><fieldset disabled={create.isPending} className="space-y-4">
+    {selected && session.user && <TaskEditor key={selected.id} task={selected} workspace={workspace} uid={session.user.uid} onSaved={() => feedback.markSaved(selected.id)} onClose={() => setSelected(null)} />}
+    <Dialog open={open} onOpenChange={value => { if (!create.isPending) setOpen(value); }}><DialogContent className="max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Tạo task</DialogTitle><DialogDescription>Task mới được thêm vào cột Cần làm. Hạn hiển thị theo giờ địa phương của bạn.</DialogDescription></DialogHeader><form onSubmit={submit} className="space-y-4"><fieldset disabled={create.isPending} className="space-y-4">
       <div className="space-y-2"><Label htmlFor="task-title">Tiêu đề</Label><Input id="task-title" name="title" required maxLength={200} /></div>
       <div className="space-y-2"><Label htmlFor="task-description">Mô tả</Label><Textarea id="task-description" name="description" maxLength={5000} /></div>
       <div className="space-y-2"><Label htmlFor="task-priority">Độ ưu tiên</Label><Select value={priority} onValueChange={setPriority}><SelectTrigger id="task-priority" className="w-full"><SelectValue /></SelectTrigger><SelectContent>{Object.entries(priorities).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>

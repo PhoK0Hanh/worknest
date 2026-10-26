@@ -5,10 +5,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function WorkspaceListSkeleton() {
   return <div role="status" aria-label="Đang tải workspace">
     <span className="sr-only">Đang tải workspace...</span>
-    <div aria-hidden="true" className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 3 }, (_, index) => <Card key={index} className="h-full min-w-0 gap-0 py-6 [--card-spacing:--spacing(6)]"><CardContent className="flex h-full flex-col">
-        <div className="flex justify-between"><Skeleton className="size-11 rounded-xl" /><Skeleton className="h-6 w-16 rounded-full" /></div>
-        <div className="mt-5 min-h-14"><Skeleton className="h-6 w-3/4" /></div><Skeleton className="mt-2 h-4 w-28" /><div className="mt-auto pt-6"><Skeleton className="h-14 w-full rounded-lg" /></div>
+    <div aria-hidden="true" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 3 }, (_, index) => <Card key={index} className="h-full min-w-0 gap-0 py-5 [--card-spacing:--spacing(5)]"><CardContent className="flex h-full flex-col">
+        <div className="flex items-start gap-3"><Skeleton className="size-9 shrink-0 rounded-lg" /><div className="min-w-0 flex-1"><div className="min-h-12"><Skeleton className="h-5 w-full" /></div><Skeleton className="mt-1 h-4 w-24" /></div><Skeleton className="h-6 w-14 rounded-full" /></div>
+        <div className="mt-auto pt-4"><Skeleton className="h-14 w-full rounded-lg" /></div>
       </CardContent></Card>)}
     </div>
   </div>;

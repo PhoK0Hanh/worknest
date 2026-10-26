@@ -1,6 +1,6 @@
 "use client";
 
-import { WorkspaceManagement, WorkspaceInviteButton, MemberActions } from "@/components/workspaces/management";
+import { WorkspaceManagement, WorkspaceDeleteButton, WorkspaceInviteButton, MemberActions } from "@/components/workspaces/management";
 import { CopyWorkspaceCode } from "@/components/workspaces/copy-workspace-code";
 import { WorkspaceDetailSkeleton, WorkspaceTabsSkeleton } from "@/components/workspaces/workspace-skeleton";
 
@@ -123,10 +123,10 @@ function WorkspaceDetailContent({
       <WorkspaceShell
         workspace={workspace}
         profileName={profile.data?.name ?? session.user?.displayName ?? "Bạn"}
-        settingsContent={<>
+        settingsContent={<div className="max-w-5xl space-y-6">
           {/* Group settings are separate from member management; permissions stay enforced by each action. */}
-          <div className="mb-6"><h2 className="text-xl font-semibold">Cài đặt workspace</h2><p className="mt-2 text-sm text-muted-foreground">Thông tin nhóm và các thiết lập theo vai trò của bạn.</p></div>
-          <div className="grid items-start gap-6 md:grid-cols-2 xl:grid-cols-3">
+          <div><h2 className="text-xl font-semibold">Cài đặt workspace</h2><p className="mt-2 text-sm text-muted-foreground">Thông tin nhóm và các thiết lập theo vai trò của bạn.</p></div>
+          <div className={workspace.role === "OWNER" ? "grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]" : "max-w-xl"}>
             <WorkspaceManagement workspace={workspace} />
             <Card className="gap-0 py-5 [--card-spacing:--spacing(5)]">
               <CardContent className="space-y-5">
@@ -141,18 +141,22 @@ function WorkspaceDetailContent({
                   <CalendarDays className="size-4" />
                   Tạo ngày {displayDate(workspace.createdAt)}
                 </p>
+                <p className="border-t pt-4 text-xs text-muted-foreground">Vai trò của bạn: <span className="font-medium text-foreground">{roleLabels[workspace.role]}</span></p>
               </CardContent>
             </Card>
-            <Card className="gap-0 py-5 [--card-spacing:--spacing(5)]">
+          </div>
+            {/* Leaving and deletion stay at the bottom, outside general settings and their forms. */}
+            <Card className="gap-0 py-5 ring-destructive/20 [--card-spacing:--spacing(5)]">
               <CardContent className="space-y-4">
-                <h2 className="font-semibold">Rời workspace</h2>
+                <div><h2 className="font-semibold">Thao tác cần lưu ý</h2><p className="mt-1 text-sm text-muted-foreground">Các thao tác ảnh hưởng đến quyền truy cập hoặc dữ liệu của nhóm.</p></div>
+                <h3 className="border-t pt-4 text-sm font-semibold">Rời workspace</h3>
                 {workspace.role === "OWNER" ? (
                   <>
                     <p className="text-sm leading-6 text-muted-foreground">
                       Owner cần chuyển quyền sở hữu cho thành viên khác trước
                       khi rời nhóm.
                     </p>
-                    <Button variant="outline" disabled className="w-full">
+                    <Button variant="outline" disabled className="w-full sm:w-auto">
                       <DoorOpen />
                       Rời nhóm
                     </Button>
@@ -214,7 +218,7 @@ function WorkspaceDetailContent({
                     </p>
                     <Button
                       variant="outline"
-                      className="w-full"
+                      className="w-full sm:w-auto"
                       onClick={() => {
                         leave.reset();
                         setConfirmLeave(true);
@@ -225,10 +229,10 @@ function WorkspaceDetailContent({
                     </Button>
                   </>
                 )}
+                {workspace.role === "OWNER" && <div className="flex flex-wrap items-center justify-between gap-4 border-t border-destructive/15 pt-5"><div className="max-w-xl"><h3 className="font-semibold text-destructive">Xóa workspace</h3><p className="mt-2 text-sm leading-6 text-muted-foreground">Xóa vĩnh viễn toàn bộ công việc, lời mời và lịch sử của nhóm. Thao tác này không thể hoàn tác.</p></div><WorkspaceDeleteButton workspace={workspace} /></div>}
               </CardContent>
             </Card>
-          </div>
-        </>}
+        </div>}
       >
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div><h2 className="text-xl font-semibold">Thành viên <span className="ml-2 text-sm font-normal text-muted-foreground">({workspace.memberCount})</span></h2><p className="mt-2 text-sm text-muted-foreground">Những người đang cùng làm việc trong workspace.</p></div>

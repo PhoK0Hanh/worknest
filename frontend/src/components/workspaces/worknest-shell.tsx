@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { LayoutGrid, Leaf, Menu, Settings, LogOut, X } from "lucide-react";
+import { LayoutGrid, ListTodo, Leaf, Menu, Settings, LogOut, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -11,7 +11,7 @@ import { AccountAvatar } from "@/components/examples/c-avatar-14";
 import { cn } from "@/lib/utils";
 
 import { signOut } from "firebase/auth";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { getFirebaseAuth } from "@/lib/firebase/client";
 
@@ -34,6 +34,7 @@ export function WorkNestShell({ profileName, accountActions, children }: {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [email, setEmail] = useState("");
   const router = useRouter();
+  const pathname = usePathname();
   const client = useQueryClient();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -66,8 +67,12 @@ export function WorkNestShell({ profileName, accountActions, children }: {
           </div>
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 py-5">
             {/* Global navigation stays the same on the list and inside a workspace. */}
-            <nav aria-label="WorkNest">
-              <Link href="/workspaces" onClick={() => setSidebarOpen(false)} className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-white px-3 py-2.5 text-sm font-medium text-primary shadow-xs"><LayoutGrid className="size-4" />Workspace</Link>
+            <nav aria-label="WorkNest" className="space-y-1.5">
+              {/* Active navigation follows the route, including workspace detail pages. */}
+              {[{ href: "/workspaces", label: "Workspace", icon: LayoutGrid }, { href: "/my-tasks", label: "Công việc của tôi", icon: ListTodo }].map(item => {
+                const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} onClick={() => setSidebarOpen(false)} className={cn("flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors", active ? "border-emerald-200 bg-white text-primary shadow-xs" : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground")}><item.icon className="size-4 shrink-0" />{item.label}</Link>;
+              })}
             </nav>
             {/* Shadcn Hover Card handles hover timing and positions the account card beside its trigger. */}
             <div className="mt-auto pt-12">

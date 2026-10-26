@@ -11,8 +11,8 @@ import type { WorkspaceDetail } from "@/lib/workspaces";
 
 const tabs = [
   { id: "board", label: "Bảng công việc", icon: Columns3 },
-  { id: "members", label: "Thành viên", icon: Users },
   { id: "overview", label: "Tổng quan", icon: LayoutGrid },
+  { id: "members", label: "Thành viên", icon: Users },
   { id: "activity", label: "Hoạt động", icon: Activity },
   { id: "settings", label: "Cài đặt", icon: Settings },
 ] as const;
@@ -73,7 +73,7 @@ export function WorkspaceShell({ workspace, profileName, children, settingsConte
           {/* Each trigger owns a stable panel for keyboard and screen-reader navigation. */}
           <TabsContent value="members" className="m-0 p-5 lg:p-8">{children}</TabsContent>
             <TabsContent value="overview" className="m-0 p-5 lg:p-8"><WorkspaceOverview workspace={workspace} onBoard={() => setTab("board")} onActivity={() => setTab("activity")} /></TabsContent>
-            {/* The task board loads authorized records; activity rendering is still pending. */}
+            {/* The board stays the default view while overview and management remain separate. */}
             <TabsContent value="board" className="m-0 p-5 lg:p-8"><TaskBoard workspace={workspace} /></TabsContent>
             <TabsContent value="activity" className="m-0 p-5 lg:p-8"><WorkspaceInsights id={workspace.id} activity /></TabsContent>
             <TabsContent value="settings" className="m-0 p-5 lg:p-8">{settingsContent}</TabsContent>

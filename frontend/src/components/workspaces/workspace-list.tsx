@@ -143,31 +143,14 @@ export function WorkspaceList() {
       <header className="sticky top-0 z-20 flex h-20 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-5 lg:px-8">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <WorkspaceMenuButton />
-          <p className="truncate text-lg font-semibold tracking-tight">
-            Không gian làm việc
-          </p>
+          <h1 className="truncate text-lg font-semibold tracking-tight">Workspace của tôi</h1>
         </div>
-        <p className="hidden max-w-60 shrink-0 truncate text-sm text-muted-foreground sm:block">
-          Chào {profile.data?.name || "bạn"}!
-        </p>
-      </header>
-      <div className="px-5 py-8 lg:px-8 lg:py-10">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <p className="mb-2 text-xs font-semibold tracking-widest text-primary uppercase">
-              Không gian của nhóm
-            </p>
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              Workspace của tôi
-            </h1>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Các nhóm bạn đang tham gia, trong cùng một nơi.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
+          {/* Keep primary actions reachable without repeating the page heading below. */}
+          <div className="flex shrink-0 gap-2">
             <Button
               variant="outline"
-              className="h-10"
+              className="size-9 p-0 sm:w-auto sm:px-3"
+              aria-label="Tham gia workspace"
               disabled={!ready || create.isPending || joining}
               onClick={() => {
                 reset();
@@ -178,11 +161,12 @@ export function WorkspaceList() {
               }}
             >
               <DoorOpen className="size-4" />
-              Tham gia workspace
+              <span className="hidden sm:inline">Tham gia workspace</span>
             </Button>
             <Button
               disabled={!ready || create.isPending || joining}
-              className="h-10"
+              className="size-9 p-0 sm:w-auto sm:px-3"
+              aria-label="Tạo workspace"
               onClick={() => {
                 create.reset();
                 setShowJoinForm(false);
@@ -191,16 +175,20 @@ export function WorkspaceList() {
               }}
             >
               <Plus className="size-4" />
-              Tạo workspace
+              <span className="hidden sm:inline">Tạo workspace</span>
             </Button>
           </div>
+      </header>
+      <div className="px-5 py-6 lg:px-8 lg:py-8">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+          <p>Các nhóm bạn đang tham gia.</p>
+          {ready && workspaces.isSuccess && <span>{workspaces.data.length} workspace</span>}
         </div>
-
         {ready && <Invitations />}
         {notice && (
           <p
             role="status"
-            className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"
+            className="worknest-notice mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900"
           >
             {notice}
           </p>
@@ -413,35 +401,30 @@ export function WorkspaceList() {
             </div>
           )}
         {ready && workspaces.data && (
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {workspaces.data.map((workspace) => (
               <Card
                 key={workspace.id}
-                className="h-full min-w-0 gap-0 py-6 [--card-spacing:--spacing(6)]"
+                className="relative h-full min-w-0 gap-0 py-5 transition-[box-shadow] duration-150 ease-out motion-reduce:transition-none hover:shadow-sm hover:ring-emerald-300 [--card-spacing:--spacing(5)]"
               >
                 <CardContent className="flex h-full flex-col">
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="rounded-xl bg-emerald-50 p-3 text-primary">
-                      <Layers3 className="size-5" />
+                  <div className="flex items-start gap-3">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-primary">
+                      <Layers3 className="size-4" />
                     </span>
-                    <span className="rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="min-h-12 wrap-break-word text-base leading-6 font-semibold">
+                        {/* The stretched link covers the card; the code remains a separate interaction above it. */}
+                        <Link href={`/workspaces/${workspace.id}`} title={workspace.name} className="after:absolute after:inset-0 after:rounded-xl hover:text-primary focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring"><span className="line-clamp-2">{workspace.name}</span></Link>
+                      </h2>
+                      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><Users className="size-3.5" />{workspace.memberCount} thành viên</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-slate-50 px-2 py-1 text-[11px] font-medium">
                       {roleLabels[workspace.role] || workspace.role}
                     </span>
                   </div>
-                  <h2 className="mt-5 min-h-14 wrap-break-word text-lg font-semibold leading-7">
-                    <Link
-                      href={`/workspaces/${workspace.id}`}
-                      className="rounded-sm underline-offset-4 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
-                    >
-                      {workspace.name}
-                    </Link>
-                  </h2>
-                  <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Users className="size-3.5" />
-                    {workspace.memberCount} thành viên
-                  </p>
                   {/* Keep the join code aligned at the bottom, even with longer workspace names. */}
-                  <div className="mt-auto pt-6">
+                  <div className="relative z-10 mt-auto pt-4">
                     {/* Share the same per-card clipboard animation as workspace settings. */}
                     <CopyWorkspaceCode key={workspace.joinCode} code={workspace.joinCode} label="Mã nhóm" />
                   </div>

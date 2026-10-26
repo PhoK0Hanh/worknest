@@ -1,10 +1,10 @@
 import { notifyTasksChanged } from "../lib/realtime.js";
 import type { RequestHandler } from "express";
 import { ZodError } from "zod";
-import { createTask, listTasks, reorderTasks, updateTask, deleteTask } from "../services/tasks.js";
+import { createTask, listTasks, reorderTasks, updateTask, deleteTask, getTask } from "../services/tasks.js";
 import { WorkspaceError } from "../services/workspaces.js";
 
-export function createTaskHandlers(services = { createTask, listTasks, reorderTasks, updateTask, deleteTask }) {
+export function createTaskHandlers(services = { createTask, listTasks, reorderTasks, updateTask, deleteTask, getTask }) {
   function handler(create: boolean, reorder = false, update = false, remove = false): RequestHandler {
     return async (request, response) => {
       response.set("Cache-Control", "no-store");
@@ -17,6 +17,7 @@ export function createTaskHandlers(services = { createTask, listTasks, reorderTa
         else if (update) response.json(await services.updateTask(uid, request.params.id, request.params.taskId, request.body));
         else if (reorder) response.json(await services.reorderTasks(uid, request.params.id, request.body));
         else if (create) response.status(201).json({ task: await services.createTask(uid, request.params.id, request.body) });
+        else if (request.params.taskId) response.json({ task: await services.getTask(uid, request.params.id, request.params.taskId) });
         else response.json({ tasks: await services.listTasks(uid, request.params.id) });
         if ((create || update || reorder || remove) && typeof request.params.id === "string") notifyTasksChanged(request.params.id);
       } catch (error) {
@@ -25,5 +26,5 @@ export function createTaskHandlers(services = { createTask, listTasks, reorderTa
       }
     };
   }
-  return { list: handler(false), create: handler(true), reorder: handler(false, true), update: handler(false, false, true), remove: handler(false, false, false, true) };
+  return { list: handler(false), detail: handler(false), create: handler(true), reorder: handler(false, true), update: handler(false, false, true), remove: handler(false, false, false, true) };
 }

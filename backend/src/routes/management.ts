@@ -1,4 +1,5 @@
 import { summarizeTasks } from "../lib/dashboard.js";
+import { notifyTasksChanged } from "../lib/realtime.js";
 import { verifyOwnerConfirmation, type VerifyOwnerToken } from "../lib/owner-confirmation.js";
 import { verifyFirebaseIdToken } from "../lib/firebase-admin.js";
 import { cleanupDeletedAccounts } from "../lib/account-cleanup.js";
@@ -128,6 +129,8 @@ management.all(["/invitations", "/invitations/:invitationId", "/workspaces/:id/m
     });
     if (req.path === "/account" && req.method === "DELETE") void cleanupDeletedAccounts();
     res.json(result);
+    // Notify only after commit so personal lists lose removed memberships and deleted workspaces.
+    if (id && req.method === "POST") notifyTasksChanged(id);
   } catch(error) {
     res.status(error instanceof z.ZodError?400:error instanceof WorkspaceError?error.status:503).json({error:error instanceof WorkspaceError?error.message:"Chưa thể xử lý yêu cầu.",code:error instanceof WorkspaceError?error.code:"MANAGEMENT_ERROR"});
   }
