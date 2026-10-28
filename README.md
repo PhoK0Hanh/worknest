@@ -1,118 +1,221 @@
 # WorkNest
 
-<!-- Document implemented behavior; production and manual checks remain explicit. -->
+<!-- README giới thiệu chức năng hiện có và hướng dẫn chạy local; ghi chú nội bộ nằm trong INFO.md. -->
 
-Ứng dụng quản lý công việc nhóm với workspace, Kanban và cộng tác realtime.
-Dự án cá nhân phục vụ học tập và portfolio thực tập.
+## Giới thiệu
 
-## Giao diện
+**WorkNest** là ứng dụng quản lý công việc nhóm. Người dùng tạo workspace, mời thành viên,
+giao việc và theo dõi tiến độ trên bảng Kanban. Trang **Công việc của tôi** tập hợp task
+được giao hoặc tự tạo từ nhiều workspace, giúp theo dõi công việc cá nhân ở một nơi.
 
-<!-- Dùng đường dẫn tương đối để ảnh hiển thị cả trên GitHub và khi xem local. -->
+Đây là dự án cá nhân phục vụ học tập và portfolio thực tập, xây dựng cả frontend và
+backend, tích hợp xác thực, phân quyền, database và cập nhật realtime.
 
-### Workspace của tôi
+## Tính năng chính
 
-Danh sách nhóm đang tham gia, vai trò, mã nhóm và thao tác tạo/tham gia workspace.
+| Nhóm chức năng | Nội dung |
+|---|---|
+| Tài khoản | Đăng ký/đăng nhập bằng email và mật khẩu, duy trì phiên đăng nhập, đăng xuất, đặt lại mật khẩu qua email, sửa tên và xóa tài khoản. |
+| Workspace | Tạo nhóm, tham gia bằng mã và mật khẩu, xem các nhóm đang tham gia, đổi tên/mật khẩu, rời hoặc xóa nhóm theo quyền. |
+| Thành viên và lời mời | Phân quyền Owner/Admin/Member, chuyển Owner, quản lý thành viên; mời người đã có tài khoản, chấp nhận hoặc từ chối lời mời có hạn 3 ngày. |
+| Bảng Kanban | Tạo, xem, sửa, xóa task; gán người thực hiện, ưu tiên và hạn hoàn thành; kéo thả giữa Cần làm, Đang thực hiện, Đã hoàn thành và sắp xếp trong cột. |
+| Công việc của tôi | Hai tab Được giao cho tôi và Do tôi tạo; lọc theo workspace, trạng thái, ưu tiên; phân trang và ưu tiên hiển thị task quá hạn. |
+| Realtime | Khi thành viên thay đổi task, bảng nhóm và danh sách công việc cá nhân được cập nhật mà không cần tải lại trang. |
+| Tổng quan và hoạt động | Thống kê tiến độ, công việc quá hạn/sắp đến hạn, hoạt động gần đây và lịch sử thay đổi trong nhóm. |
+| Giao diện | Sidebar chung, header cố định, skeleton khi tải, bố cục responsive và animation nhẹ cho tab, nút sao chép, phản hồi lưu task. |
 
-![Danh sách workspace với vai trò, số thành viên và nút sao chép mã nhóm](docs/images/workspaces.png)
+Một số quy tắc chính:
 
-### Công việc của tôi
+- Quyền truy cập được kiểm tra ở backend. Chỉ người tạo task hoặc Owner/Admin được xóa task.
+- Owner phải chuyển quyền trước khi rời nhóm. Xóa nhóm, chuyển Owner và đổi mật khẩu tham gia
+  yêu cầu xác nhận lại bằng mật khẩu tài khoản Owner.
+- Khi rời nhóm hoặc bị loại, task của nhóm đó không còn xuất hiện trong **Công việc của tôi**,
+  nhưng vẫn được giữ trong workspace.
+- Người bị loại không thể dùng mã và mật khẩu để tự tham gia lại; cần chấp nhận lời mời mới.
+- Task có thể chưa có người phụ trách hoặc deadline. Mặc định **Công việc của tôi** chỉ hiện
+  task chưa hoàn thành; người dùng có thể đổi bộ lọc để xem task đã hoàn thành.
 
-Theo dõi task được giao và task tự tạo trong các nhóm đang tham gia; lọc theo
-workspace, trạng thái và độ ưu tiên.
+### Giao diện ứng dụng
 
-![Công việc của tôi với hai tab, bộ lọc và danh sách task](docs/images/my-tasks.png)
+**Workspace của tôi** — danh sách nhóm, vai trò, số thành viên và mã tham gia.
 
-### Bảng công việc
+![Danh sách workspace của người dùng](docs/images/workspaces.png)
 
-Kanban ba trạng thái: Cần làm, Đang thực hiện, Đã hoàn thành.
+**Công việc của tôi** — theo dõi task được giao và task tự tạo từ các nhóm đang tham gia.
 
-![Bảng Kanban của workspace với người thực hiện, độ ưu tiên và hạn hoàn thành](docs/images/kanban.png)
+![Công việc của tôi với hai tab và bộ lọc](docs/images/my-tasks.png)
 
-## Tính năng
+**Bảng công việc** — quản lý task theo ba trạng thái trên Kanban.
 
-- Firebase Email/Password: đăng ký, đăng nhập, khôi phục phiên, đăng xuất và email đặt lại mật khẩu.
-- Hồ sơ Neon: đồng bộ theo Firebase UID, sửa tên, xóa mềm tài khoản; dọn danh tính Firebase có cơ chế thử lại.
-- Workspace: tạo nhóm, tham gia bằng mã và mật khẩu đã hash, đổi tên/mật khẩu, xóa có xác nhận.
-- Phân quyền Owner/Admin/Member, chuyển Owner, loại thành viên và chặn tham gia lại bằng mã khi bị banned.
-- Lời mời dành cho tài khoản có sẵn, hạn 3 ngày, chấp nhận/từ chối và ngăn lời mời còn hiệu lực trùng nhau.
-- Các thao tác xóa workspace, chuyển Owner và đổi mật khẩu tham gia nhóm yêu cầu Owner xác nhận lại bằng mật khẩu tài khoản qua Firebase.
-- Kanban ReUI: tạo/sửa/xóa task, người phụ trách, ưu tiên, deadline, kéo thả trạng thái và thứ tự với dynamic overlay. Chỉ người tạo task hoặc Owner/Admin được xóa task.
-- Sheet chi tiết task; phát hiện chỉnh sửa từ dữ liệu cũ và xung đột thứ tự bảng.
-- Công việc của tôi: hai tab **Được giao cho tôi** và **Do tôi tạo**, bộ lọc workspace/trạng thái/ưu tiên, phân trang, ưu tiên task quá hạn rồi đến hạn gần nhất. Mặc định chỉ hiện task chưa hoàn thành.
-- Khi rời nhóm hoặc bị loại, task thuộc nhóm đó không còn hiện trong Công việc của tôi; task vẫn được giữ trong workspace.
-- Realtime Socket.IO xác thực Firebase và kiểm tra quyền người nhận; cập nhật cả bảng nhóm lẫn danh sách công việc cá nhân. Reconnect tải lại dữ liệu.
-- Tổng quan: số task, tiến độ, task quá hạn/sắp đến hạn trong 7 ngày và hoạt động gần đây. Tab Hoạt động hiển thị 100 bản ghi mới nhất.
-- Khung ứng dụng toàn màn hình, sidebar chung, sticky header, skeleton và giao diện responsive; tách riêng tab Thành viên và Cài đặt.
-- Animation nhẹ: highlight tab trượt, mở/đóng lời mời, phản hồi sao chép/lưu task; hỗ trợ tùy chọn giảm chuyển động của hệ điều hành.
+![Bảng Kanban với người thực hiện, độ ưu tiên và hạn hoàn thành](docs/images/kanban.png)
 
-Bình luận, sprint, task con, tệp đính kèm và cột tùy chỉnh chưa nằm trong bản đầu.
+## Công nghệ và kiến trúc
 
-## Stack và kiến trúc
+| Thành phần | Công nghệ và vai trò |
+|---|---|
+| Frontend | Next.js App Router, React, TypeScript — xây dựng giao diện và các trang ứng dụng. |
+| Giao diện | Tailwind CSS, shadcn/ui, ReUI, Lucide — bố cục, component và icon; dnd-kit hỗ trợ kéo thả Kanban. |
+| Form và dữ liệu | React Hook Form, Zod — quản lý/kiểm tra form; Axios gọi API; TanStack Query quản lý dữ liệu và cache phía frontend. |
+| Backend | Node.js, Express, TypeScript — cung cấp REST API, xử lý nghiệp vụ và phân quyền. |
+| Database | PostgreSQL trên Neon — lưu người dùng, workspace, membership, lời mời, task và lịch sử hoạt động. |
+| Truy cập database | Prisma và adapter-pg — kết nối PostgreSQL, truy vấn và quản lý migration. |
+| Xác thực | Firebase Authentication ở frontend; Firebase Admin xác minh ID token ở backend. |
+| Realtime | Socket.IO — thông báo thay đổi để frontend tải lại dữ liệu liên quan. |
+| Bảo vệ API | Argon2 hash mật khẩu tham gia nhóm; Helmet, CORS và express-rate-limit hỗ trợ cấu hình HTTP và giới hạn request. |
 
-| Phần            | Công nghệ                                                                |
-| --------------- | ------------------------------------------------------------------------ |
-| Frontend        | Next.js App Router, React, TypeScript, Tailwind CSS                      |
-| UI              | shadcn/ui, ReUI, Lucide, dnd-kit                                         |
-| Form và dữ liệu | React Hook Form, Zod, TanStack Query, Axios                              |
-| Backend         | Node.js, Express, TypeScript, Firebase Admin, Argon2, express-rate-limit |
-| Database        | PostgreSQL trên Neon, Prisma và adapter-pg                               |
-| Auth / realtime | Firebase Authentication / Socket.IO                                      |
+Frontend và backend nằm trong cùng repository nhưng có `package.json` và tiến trình chạy riêng:
 
 ```text
-Frontend → Firebase Auth → ID token
-Frontend → Express REST API (Bearer token) → Prisma → Neon
-Frontend ↔ Socket.IO (token + quyền workspace)
-DB commit → sự kiện thay đổi → TanStack Query tải lại dữ liệu
+worknest/
+├── frontend/            # Next.js: giao diện, form và gọi API
+├── backend/
+│   ├── src/             # Express: API, nghiệp vụ, auth và realtime
+│   ├── prisma/          # Schema và migration PostgreSQL
+│   └── tests/           # Kiểm thử backend
+└── docs/images/         # Ảnh giao diện trong README
 ```
 
-Firebase không tự gửi hồ sơ vào Neon. Backend xác minh token trước khi xử lý
-nghiệp vụ; mật khẩu tài khoản chỉ gửi Firebase. Mật khẩu tham gia nhóm được hash
-bằng Argon2. Quyền được kiểm tra ở backend, không chỉ dựa vào giao diện.
+Luồng dữ liệu chính:
 
-## Cài đặt local
+```text
+Frontend → Firebase Authentication → ID token
+Frontend → Express API (Bearer token) → Prisma → PostgreSQL/Neon
+Database cập nhật thành công → Socket.IO → Frontend tải lại dữ liệu
+```
 
-Yêu cầu Node.js theo `backend/package.json` (>=24), npm, Firebase bật Email/Password
-và PostgreSQL/Neon. Mỗi ứng dụng có package và lockfile riêng.
+Firebase xử lý xác thực; dữ liệu nghiệp vụ nằm trong PostgreSQL. Frontend gửi token tới
+backend để đồng bộ hồ sơ và gọi API. Mật khẩu tài khoản chỉ gửi cho Firebase;
+mật khẩu tham gia workspace được backend hash bằng Argon2 trước khi lưu.
+
+## Cài đặt và chạy local
+
+### Yêu cầu môi trường
+
+- Node.js **24 trở lên**, npm và Git.
+- Một project Firebase và một database PostgreSQL trên Neon.
+- Kết nối Internet để frontend/backend local truy cập Firebase và Neon.
+
+Các lệnh bên dưới chạy từ thư mục gốc `worknest`, trừ khi có hướng dẫn khác.
+
+### Bước 1: Tải mã nguồn và cài đặt thư viện
 
 ```powershell
+git clone https://github.com/PhoK0Hanh/worknest.git
+cd worknest
 npm --prefix frontend ci
 npm --prefix backend ci
-npm --prefix backend run db:generate
 ```
 
-Sao chép `frontend/.env.example` thành `frontend/.env.local` và `backend/.env.example`
-thành `backend/.env`, điền cấu hình thật; không ghi đè file đã cấu hình.
+Nếu đã có code, mở terminal tại thư mục `worknest` và chạy hai lệnh `npm ci` ở trên.
 
-- FE: `NEXT_PUBLIC_API_URL` và bốn biến Firebase Web config trong `.env.example`.
-- `NEXT_PUBLIC_SOCKET_URL` là tùy chọn; nếu bỏ trống, dùng origin của `NEXT_PUBLIC_API_URL`.
-- BE: `PORT`, `FRONTEND_URL`, `DATABASE_URL` và Firebase Admin credentials.
-- `FRONTEND_URL` phải khớp origin FE. Firebase Admin và URL database chỉ ở backend.
+### Bước 2: Thiết lập Firebase
 
-Sau khi kiểm tra đúng database đích:
+1. Tạo project trong [Firebase Console](https://console.firebase.google.com/).
+2. Thêm một **Web app** vào project. Trong phần cấu hình ứng dụng, lấy `apiKey`,
+   `authDomain`, `projectId` và `appId` để cấu hình frontend.
+3. Trong **Authentication → Sign-in method**, bật **Email/Password**.
+   Xem [hướng dẫn Firebase Email/Password](https://firebase.google.com/docs/auth/web/password-auth).
+4. Trong **Authentication → Settings → Authorized domains**, thêm `localhost` nếu chưa có.
+5. Trong **Project settings → Service accounts**, chọn **Generate new private key**
+   để tải file JSON dành cho backend. Lấy các trường `project_id`, `client_email`, `private_key`
+   theo [hướng dẫn Firebase Admin](https://firebase.google.com/docs/admin/setup).
+
+Frontend và backend phải sử dụng **cùng một project Firebase**.
+
+### Bước 3: Tạo database trên Neon
+
+Tạo project trên [Neon](https://console.neon.tech/), dùng một database trống dành cho dự án.
+Chọn **Connect**, chọn branch/database/role rồi sao chép connection string PostgreSQL
+theo [hướng dẫn kết nối Neon](https://neon.com/docs/get-started/connect-neon).
+Giữ nguyên các tham số kết nối do Neon cung cấp và dùng chuỗi này cho `DATABASE_URL` ở bước sau.
+
+Chưa cần tạo bảng bằng tay; migration có sẵn trong repository sẽ tạo các bảng ở bước 5.
+
+### Bước 4: Cấu hình biến môi trường
+
+Sao chép hai file mẫu sau nếu chưa có file cấu hình local:
+
+| File mẫu | File cần tạo |
+|---|---|
+| `frontend/.env.example` | `frontend/.env.local` |
+| `backend/.env.example` | `backend/.env` |
+
+Trong **`frontend/.env.local`**, thay các giá trị `YOUR_*` bằng cấu hình Web app Firebase:
+
+```dotenv
+NEXT_PUBLIC_API_URL=http://localhost:4000/api
+NEXT_PUBLIC_FIREBASE_API_KEY=YOUR_API_KEY
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=YOUR_PROJECT_ID.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=YOUR_PROJECT_ID
+NEXT_PUBLIC_FIREBASE_APP_ID=YOUR_APP_ID
+
+# Tùy chọn; nếu bỏ dòng này, dùng origin của NEXT_PUBLIC_API_URL.
+NEXT_PUBLIC_SOCKET_URL=http://localhost:4000
+```
+
+Trong **`backend/.env`**, điền connection string Neon và thông tin từ file JSON Firebase Admin:
+
+```dotenv
+PORT=4000
+FRONTEND_URL=http://localhost:3000
+DATABASE_URL="postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require"
+
+FIREBASE_ADMIN_PROJECT_ID=YOUR_PROJECT_ID
+FIREBASE_ADMIN_CLIENT_EMAIL=YOUR_SERVICE_ACCOUNT_EMAIL
+FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYOUR_PRIVATE_KEY\n-----END PRIVATE KEY-----\n"
+```
+
+Với private key, sao chép đầy đủ giá trị `private_key` từ JSON, giữ các ký tự `\n`
+và đặt trong dấu ngoặc kép. Không dùng chuỗi minh họa `YOUR_PRIVATE_KEY`.
+`FRONTEND_URL` phải khớp địa chỉ frontend đang chạy.
+
+Không đưa file `.env` thật hoặc JSON Firebase Admin lên Git; không đặt private key hay
+URL database trong biến `NEXT_PUBLIC_*` vì các biến này được đưa tới trình duyệt.
+
+### Bước 5: Khởi tạo Prisma Client và bảng dữ liệu
+
+Sau khi điền đúng `DATABASE_URL` trỏ đến database dành cho dự án, chạy:
 
 ```powershell
+npm --prefix backend run db:generate
 npm --prefix backend run db:validate
 npm --prefix backend run db:deploy
 ```
 
-Chạy hai terminal:
+- `db:generate`: tạo Prisma Client để backend sử dụng.
+- `db:validate`: kiểm tra schema Prisma.
+- `db:deploy`: áp dụng các migration có sẵn vào database, **không đưa ứng dụng lên hosting**.
+
+Database sẽ có sáu bảng nghiệp vụ: `users`, `workspaces`, `memberships`, `invitations`,
+`tasks`, `activity_logs`. Bảng `_prisma_migrations` lưu lịch sử migration.
+Không cần dữ liệu mẫu để bắt đầu: đăng ký tài khoản và tạo workspace từ giao diện.
+
+### Bước 6: Khởi chạy ứng dụng
+
+Mở **hai terminal** tại thư mục gốc `worknest`.
+
+Terminal 1 — backend:
 
 ```powershell
 npm --prefix backend run dev
 ```
 
+Terminal 2 — frontend:
+
 ```powershell
 npm --prefix frontend run dev
 ```
 
-FE mặc định `http://localhost:3000`, BE `http://localhost:4000`.
-Đăng nhập thành công vào `/workspaces`. Sidebar có **Workspace** và **Công việc của tôi**
-(`/my-tasks`). Mở nhóm sẽ vào **Bảng công việc**; các tab còn lại là **Tổng quan**,
-**Thành viên**, **Hoạt động** và **Cài đặt**.
+Mở [http://localhost:3000](http://localhost:3000) để sử dụng ứng dụng.
+Backend chạy tại `http://localhost:4000`; kiểm tra tiến trình API bằng
+[http://localhost:4000/api/health](http://localhost:4000/api/health).
+Endpoint health chỉ xác nhận API đang chạy, chưa xác nhận kết nối Firebase hoặc database.
 
-## Kiểm tra
+Đăng ký tài khoản, tạo workspace rồi thêm task. Để thử realtime, đăng nhập tài khoản thứ hai
+trên trình duyệt khác, tham gia cùng workspace và quan sát khi tài khoản đầu tiên cập nhật task.
+Sau khi thay đổi file môi trường, khởi động lại tiến trình tương ứng.
 
-Cài dependencies của cả FE và BE trước; test realtime sử dụng Socket.IO client của FE.
+### Kiểm tra mã nguồn và chạy kiểm thử
 
 ```powershell
 npm --prefix frontend run lint
@@ -120,39 +223,5 @@ npm --prefix frontend run build
 npm --prefix backend test
 ```
 
-Bật kiểm thử Neon từ thư mục `backend`:
-
-```powershell
-npm run build
-$env:RUN_DB_TESTS='1'
-node --env-file=.env --test tests/*.test.mjs
-Remove-Item Env:\RUN_DB_TESTS
-```
-
-Test database dùng bảng tạm trong transaction. Test thường bỏ qua các bài cần Neon.
-Có kiểm thử auth, phân quyền quản lý, task, rollback, xung đột và nhiều kết nối socket.
-Công việc của tôi có kiểm thử phạm vi người dùng/nhóm, mất quyền truy cập, bộ lọc,
-thứ tự và phân trang.
-Email reset, xóa tài khoản Firebase thật và toàn bộ thao tác UI vẫn cần smoke test
-với tài khoản thử; kết quả build/test không thay thế kiểm thử trình duyệt.
-
-## Cấu trúc và triển khai
-
-- `frontend/src/app`: routes Next.js.
-- `frontend/src/components`: component shadcn/ReUI và giao diện nghiệp vụ.
-- `backend/src/routes`, `services`, `lib`: API, transaction và tích hợp dịch vụ.
-- `backend/prisma`: schema và migration cho 6 bảng.
-- `backend/tests`: kiểm thử Node.js và tích hợp.
-- `docs/images`: ảnh giao diện dùng trong README.
-
-Frontend và backend được triển khai riêng trên **Vercel** và **Render**, sử dụng
-**Neon** cho database và **Firebase Authentication** cho xác thực. Người sở hữu đã
-xác nhận FE/BE hoạt động; các thay đổi local mới cần được phát hành riêng để có trên production.
-
-Backend cần tiến trình Node chạy lâu dài, hỗ trợ Socket.IO. Đặt biến môi trường
-production trước khi build FE, cấu hình CORS và Firebase authorized domains,
-rồi chạy migration bằng `db:deploy`. Người sở hữu dự án tự thực hiện deploy.
-
-Bản hiện tại dùng một backend instance; nhiều instance cần shared Socket.IO adapter.
-Xóa tài khoản giữ hồ sơ lịch sử ở Neon; dọn danh tính Firebase chạy sau commit và
-thử lại mỗi phút khi backend hoạt động. Email có thể cần chờ bước dọn này trước khi đăng ký lại.
+Lệnh test backend tự build trước khi chạy; các bài cần database được bỏ qua mặc định.
+Cần cài thư viện của cả frontend và backend vì test realtime sử dụng Socket.IO client của frontend.
