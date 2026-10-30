@@ -10,7 +10,8 @@ coverage/
 *.tsbuildinfo
 .vercel/
 # Local project notes are intentionally excluded from Git.
-/INFO.md
+myDocs/
 # npm download cache stays local to this project.
 /.npm-cache/
 DEPLOYMENT.md
+
